@@ -1,435 +1,345 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Search,
-  FileText,
-  Link as LinkIcon,
-  Video,
-  User,
-  Plus,
-  ExternalLink,
-  Loader2,
   BookOpen,
+  Users,
+  ChevronLeft,
+  Zap,
+  Monitor,
+  Radio,
+  Cog,
   GraduationCap,
+  Clock,
 } from "lucide-react";
-import type { Resource } from "@/lib/types";
-import { RESOURCE_CATEGORIES, RESOURCE_TYPES } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { BRANCHES, getSemesterCourses, getTotalCredits, type Branch, type Course } from "@/lib/curriculumData";
+import { CourseDetail } from "@/components/resources/course-detail";
+import { ClubsGrid } from "@/components/resources/clubs-grid";
 
-const categoryIcons = {
-  Notes: FileText,
-  Papers: FileText,
-  Video: Video,
-  Contact: User,
-  Other: BookOpen,
+// Dynamic icon component
+const BranchIcon = ({ iconName, className }: { iconName: string; className?: string }) => {
+  const icons: Record<string, React.ReactNode> = {
+    Zap: <Zap className={className} />,
+    Monitor: <Monitor className={className} />,
+    Radio: <Radio className={className} />,
+    Cog: <Cog className={className} />,
+  };
+  return icons[iconName] || <GraduationCap className={className} />;
 };
 
-const categoryColors = {
-  Notes: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  Papers: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  Video: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  Contact: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  Other: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-};
+type ViewState = "gateway" | "academic" | "clubs";
 
 export default function ResourcesPage() {
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [view, setView] = useState<ViewState>("gateway");
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-  // Form state
-  const [newResource, setNewResource] = useState({
-    title: "",
-    description: "",
-    type: "Link" as Resource["type"],
-    category: "Notes" as Resource["category"],
-    subject_name: "",
-    subject_code: "",
-    professor_name: "",
-    url: "",
-  });
+  // Get current branch data
+  const currentBranch = selectedBranch
+    ? BRANCHES.find((b) => b.id === selectedBranch)
+    : null;
 
-  const supabase = createClient();
+  // Get current courses
+  const currentCourses = selectedBranch && selectedSemester
+    ? getSemesterCourses(selectedBranch, selectedSemester)
+    : [];
 
-  useEffect(() => {
-    fetchResources();
-  }, []);
-
-  const fetchResources = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from("resources")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setResources(data);
-    }
-    setIsLoading(false);
+  // Navigation handlers
+  const goToGateway = () => {
+    setView("gateway");
+    setSelectedBranch(null);
+    setSelectedSemester(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const goToAcademic = () => {
+    setView("academic");
+    setSelectedBranch(null);
+    setSelectedSemester(null);
+  };
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const selectBranch = (branchId: string) => {
+    setSelectedBranch(branchId);
+    setSelectedSemester(null);
+  };
 
-    const { error } = await supabase.from("resources").insert([
-      {
-        ...newResource,
-        uploaded_by: user?.id,
-      },
-    ]);
+  const goBack = () => {
+    if (selectedSemester) {
+      setSelectedSemester(null);
+    } else if (selectedBranch) {
+      setSelectedBranch(null);
+    } else {
+      goToGateway();
+    }
+  };
 
-    if (!error) {
-      setIsAddDialogOpen(false);
-      setNewResource({
-        title: "",
-        description: "",
-        type: "Link",
-        category: "Notes",
-        subject_name: "",
-        subject_code: "",
-        professor_name: "",
-        url: "",
+  // Breadcrumb with click handlers
+  const getBreadcrumbItems = () => {
+    const items: { label: string; onClick?: () => void }[] = [];
+
+    if (view === "academic") {
+      items.push({
+        label: "Resources",
+        onClick: goToGateway,
       });
-      fetchResources();
     }
-    setIsSubmitting(false);
+
+    if (selectedBranch && currentBranch) {
+      items.push({
+        label: currentBranch.shortName,
+        onClick: () => {
+          setSelectedSemester(null);
+          setSelectedCourse(null);
+        },
+      });
+    }
+
+    if (selectedSemester) {
+      items.push({
+        label: `Semester ${selectedSemester}`,
+        onClick: () => setSelectedCourse(null),
+      });
+    }
+
+    if (selectedCourse) {
+      items.push({
+        label: selectedCourse.title,
+      });
+    }
+
+    return items;
   };
 
-  const filteredResources = resources.filter((resource) => {
-    const matchesSearch =
-      resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.subject_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.professor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.subject_code?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory =
-      activeCategory === "all" || resource.category === activeCategory;
-
-    return matchesSearch && matchesCategory;
-  });
-
-  return (
-    <div className="p-4 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl dark:text-white">
+  // ============================================
+  // GATEWAY VIEW
+  // ============================================
+  if (view === "gateway") {
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center p-4 lg:p-8">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white lg:text-4xl">
             Resource Hub
           </h1>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">
-            Find and share academic resources with your peers
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
+            Choose your path
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Resource
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Resource</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={newResource.title}
-                  onChange={(e) =>
-                    setNewResource({ ...newResource, title: e.target.value })
-                  }
-                  placeholder="e.g., Data Structures Notes"
-                  required
-                />
+        <div className="grid w-full max-w-2xl gap-6 md:grid-cols-2">
+          {/* Academic Materials Card */}
+          <Card
+            className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-xl"
+            onClick={goToAcademic}
+          >
+            <CardContent className="flex flex-col items-center p-8 text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg transition-transform group-hover:scale-110">
+                <BookOpen className="h-10 w-10 text-white" />
               </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                Academic Materials
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Course-wise notes, papers & resources
+              </p>
+              <Badge className="mt-4 bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                {BRANCHES.length} Branches Available
+              </Badge>
+            </CardContent>
+          </Card>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Type *</Label>
-                  <Select
-                    value={newResource.type}
-                    onValueChange={(value: Resource["type"]) =>
-                      setNewResource({ ...newResource, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RESOURCE_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Category *</Label>
-                  <Select
-                    value={newResource.category}
-                    onValueChange={(value: Resource["category"]) =>
-                      setNewResource({ ...newResource, category: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RESOURCE_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Campus Clubs Card */}
+          <Card
+            className="group cursor-pointer border-2 border-transparent transition-all hover:border-emerald-500 hover:shadow-xl"
+            onClick={() => setView("clubs")}
+          >
+            <CardContent className="flex flex-col items-center p-8 text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg transition-transform group-hover:scale-110">
+                <Users className="h-10 w-10 text-white" />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subject_name">Subject Name</Label>
-                  <Input
-                    id="subject_name"
-                    value={newResource.subject_name}
-                    onChange={(e) =>
-                      setNewResource({ ...newResource, subject_name: e.target.value })
-                    }
-                    placeholder="e.g., Data Structures"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="subject_code">Subject Code</Label>
-                  <Input
-                    id="subject_code"
-                    value={newResource.subject_code}
-                    onChange={(e) =>
-                      setNewResource({ ...newResource, subject_code: e.target.value })
-                    }
-                    placeholder="e.g., CS201"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="professor_name">Professor Name</Label>
-                <Input
-                  id="professor_name"
-                  value={newResource.professor_name}
-                  onChange={(e) =>
-                    setNewResource({ ...newResource, professor_name: e.target.value })
-                  }
-                  placeholder="e.g., Dr. John Doe"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="url">URL / Link *</Label>
-                <Input
-                  id="url"
-                  value={newResource.url}
-                  onChange={(e) =>
-                    setNewResource({ ...newResource, url: e.target.value })
-                  }
-                  placeholder="https://..."
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newResource.description}
-                  onChange={(e) =>
-                    setNewResource({ ...newResource, description: e.target.value })
-                  }
-                  placeholder="Brief description of the resource"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAddDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Add Resource"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Search by subject, professor, or keyword..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                Campus Clubs
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Student groups & activities
+              </p>
+              <Badge className="mt-4 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                Coming Soon
+              </Badge>
+            </CardContent>
+          </Card>
         </div>
       </div>
+    );
+  }
 
-      {/* Category Tabs */}
-      <Tabs value={activeCategory} onValueChange={setActiveCategory} className="mb-6">
-        <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
-          <TabsTrigger
-            value="all"
-            className="rounded-full border data-[state=active]:border-blue-500 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950"
-          >
-            All Resources
-          </TabsTrigger>
-          {RESOURCE_CATEGORIES.map((category) => {
-            const Icon = categoryIcons[category];
-            return (
-              <TabsTrigger
-                key={category}
-                value={category}
-                className="gap-2 rounded-full border data-[state=active]:border-blue-500 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950"
-              >
-                <Icon className="h-4 w-4" />
-                {category}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+  // ============================================
+  // CLUBS VIEW
+  // ============================================
+  if (view === "clubs") {
+    return <ClubsGrid onBack={goToGateway} />;
+  }
 
-        <TabsContent value={activeCategory} className="mt-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            </div>
-          ) : filteredResources.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <GraduationCap className="mb-4 h-12 w-12 text-slate-300" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white">
-                  No resources found
+  // ============================================
+  // ACADEMIC VIEW
+  // ============================================
+  return (
+    <div className="p-4 lg:p-8">
+      {/* Header with breadcrumb */}
+      <div className="mb-8">
+        <Button variant="ghost" onClick={goBack} className="mb-4 gap-2">
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </Button>
+
+        {/* Breadcrumb */}
+        <div className="mb-2 flex items-center gap-1 text-sm text-slate-500">
+          {getBreadcrumbItems().map((item, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <span>/</span>}
+              {item.onClick ? (
+                <button
+                  onClick={item.onClick}
+                  className="hover:text-indigo-600 hover:underline"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {item.label}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white lg:text-3xl">
+          {selectedSemester
+            ? `${currentBranch?.shortName} - Semester ${selectedSemester}`
+            : selectedBranch
+              ? currentBranch?.name
+              : "Academic Materials"}
+        </h1>
+        <p className="mt-1 text-slate-600 dark:text-slate-400">
+          {selectedSemester
+            ? `${currentCourses.length} courses • ${getTotalCredits(currentCourses)} credits`
+            : selectedBranch
+              ? "Select your semester"
+              : "Select your branch"}
+        </p>
+      </div>
+
+      {/* Branch Selection */}
+      {!selectedBranch && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {BRANCHES.map((branch) => (
+            <Card
+              key={branch.id}
+              className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-lg"
+              onClick={() => selectBranch(branch.id)}
+            >
+              <CardContent className="flex flex-col items-center p-6 text-center">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md transition-transform group-hover:scale-110">
+                  <BranchIcon iconName={branch.icon} className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  {branch.shortName}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  {searchQuery
-                    ? "Try adjusting your search terms"
-                    : "Be the first to add a resource!"}
+                <p className="mt-1 text-xs text-slate-500">
+                  {branch.name}
                 </p>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredResources.map((resource) => {
-                const Icon = categoryIcons[resource.category];
-                return (
-                  <Card
-                    key={resource.id}
-                    className="group transition-all hover:shadow-md"
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <Badge
-                          variant="secondary"
-                          className={categoryColors[resource.category]}
-                        >
-                          <Icon className="mr-1 h-3 w-3" />
-                          {resource.category}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {resource.type}
-                        </Badge>
-                      </div>
-                      <CardTitle className="mt-2 text-lg leading-tight">
-                        {resource.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {resource.description && (
-                        <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
-                          {resource.description}
-                        </p>
-                      )}
+          ))}
+        </div>
+      )}
 
-                      <div className="space-y-1 text-sm text-slate-500">
-                        {resource.subject_name && (
-                          <p>
-                            <span className="font-medium">Subject:</span>{" "}
-                            {resource.subject_name}
-                            {resource.subject_code && ` (${resource.subject_code})`}
-                          </p>
-                        )}
-                        {resource.professor_name && (
-                          <p>
-                            <span className="font-medium">Professor:</span>{" "}
-                            {resource.professor_name}
-                          </p>
-                        )}
-                      </div>
+      {/* Semester Selection */}
+      {selectedBranch && !selectedSemester && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((sem) => {
+            const courses = getSemesterCourses(selectedBranch, sem);
+            const credits = getTotalCredits(courses);
+            return (
+              <Card
+                key={sem}
+                className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-lg"
+                onClick={() => setSelectedSemester(sem)}
+              >
+                <CardContent className="p-6">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                    <span className="text-xl font-bold">{sem}</span>
+                  </div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Semester {sem}
+                  </h3>
+                  <div className="mt-2 flex items-center gap-3 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      {courses.length} courses
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {credits} credits
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-                      {resource.url && (
-                        <a
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-4 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Open Resource
-                        </a>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Course Cards */}
+      {selectedSemester && !selectedCourse && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {currentCourses.map((course) => (
+            <Card
+              key={course.code}
+              className="cursor-pointer transition-all hover:shadow-md hover:border-indigo-300"
+              onClick={() => setSelectedCourse(course)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                    {course.code}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {course.credits} Credits
+                  </Badge>
+                </div>
+                <CardTitle className="mt-2 text-lg leading-tight">
+                  {course.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <GraduationCap className="h-4 w-4" />
+                    <span>{course.type === "core" ? "Core Course" : "Elective"}</span>
+                  </div>
+                  {course.chapters && course.chapters.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {course.chapters.length} Chapters
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Course Detail View */}
+      {selectedCourse && (
+        <CourseDetail
+          course={selectedCourse}
+          onBack={() => setSelectedCourse(null)}
+        />
+      )}
     </div>
   );
 }

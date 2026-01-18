@@ -244,16 +244,31 @@ export default function SettingsPage() {
                 <Label htmlFor="focusDuration">Focus Duration (min)</Label>
                 <Input
                   id="focusDuration"
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={timerSettings.focusDuration}
-                  onChange={(e) =>
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="25"
+                  value={timerSettings.focusDuration === 0 ? "" : timerSettings.focusDuration}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     setTimerSettings({
                       ...timerSettings,
-                      focusDuration: parseInt(e.target.value) || 25,
-                    })
-                  }
+                      focusDuration: val === "" ? 0 : Math.min(120, parseInt(val)),
+                    });
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || parseInt(e.target.value) < 1) {
+                      setTimerSettings({ ...timerSettings, focusDuration: 25 });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!timerSettings.focusDuration || timerSettings.focusDuration < 1) {
+                        setTimerSettings({ ...timerSettings, focusDuration: 25 });
+                      }
+                      handleSaveTimerSettings();
+                    }
+                  }}
                 />
               </div>
 
@@ -261,16 +276,31 @@ export default function SettingsPage() {
                 <Label htmlFor="shortBreakDuration">Short Break (min)</Label>
                 <Input
                   id="shortBreakDuration"
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={timerSettings.shortBreakDuration}
-                  onChange={(e) =>
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="5"
+                  value={timerSettings.shortBreakDuration === 0 ? "" : timerSettings.shortBreakDuration}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     setTimerSettings({
                       ...timerSettings,
-                      shortBreakDuration: parseInt(e.target.value) || 5,
-                    })
-                  }
+                      shortBreakDuration: val === "" ? 0 : Math.min(30, parseInt(val)),
+                    });
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || parseInt(e.target.value) < 1) {
+                      setTimerSettings({ ...timerSettings, shortBreakDuration: 5 });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!timerSettings.shortBreakDuration || timerSettings.shortBreakDuration < 1) {
+                        setTimerSettings({ ...timerSettings, shortBreakDuration: 5 });
+                      }
+                      handleSaveTimerSettings();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -280,16 +310,31 @@ export default function SettingsPage() {
                 <Label htmlFor="longBreakDuration">Long Break (min)</Label>
                 <Input
                   id="longBreakDuration"
-                  type="number"
-                  min="1"
-                  max="60"
-                  value={timerSettings.longBreakDuration}
-                  onChange={(e) =>
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="15"
+                  value={timerSettings.longBreakDuration === 0 ? "" : timerSettings.longBreakDuration}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     setTimerSettings({
                       ...timerSettings,
-                      longBreakDuration: parseInt(e.target.value) || 15,
-                    })
-                  }
+                      longBreakDuration: val === "" ? 0 : Math.min(60, parseInt(val)),
+                    });
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || parseInt(e.target.value) < 1) {
+                      setTimerSettings({ ...timerSettings, longBreakDuration: 15 });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!timerSettings.longBreakDuration || timerSettings.longBreakDuration < 1) {
+                        setTimerSettings({ ...timerSettings, longBreakDuration: 15 });
+                      }
+                      handleSaveTimerSettings();
+                    }
+                  }}
                 />
               </div>
 
@@ -299,16 +344,31 @@ export default function SettingsPage() {
                 </Label>
                 <Input
                   id="sessionsUntilLongBreak"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={timerSettings.sessionsUntilLongBreak}
-                  onChange={(e) =>
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="4"
+                  value={timerSettings.sessionsUntilLongBreak === 0 ? "" : timerSettings.sessionsUntilLongBreak}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     setTimerSettings({
                       ...timerSettings,
-                      sessionsUntilLongBreak: parseInt(e.target.value) || 4,
-                    })
-                  }
+                      sessionsUntilLongBreak: val === "" ? 0 : Math.min(10, parseInt(val)),
+                    });
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || parseInt(e.target.value) < 1) {
+                      setTimerSettings({ ...timerSettings, sessionsUntilLongBreak: 4 });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!timerSettings.sessionsUntilLongBreak || timerSettings.sessionsUntilLongBreak < 1) {
+                        setTimerSettings({ ...timerSettings, sessionsUntilLongBreak: 4 });
+                      }
+                      handleSaveTimerSettings();
+                    }
+                  }}
                 />
               </div>
             </div>

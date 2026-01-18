@@ -13,6 +13,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
@@ -54,20 +55,23 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-slate-200 bg-white lg:block dark:border-slate-800 dark:bg-slate-950">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-slate-200 bg-white lg:block dark:border-slate-800 dark:bg-zinc-950">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-6 dark:border-slate-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700">
-          <GraduationCap className="h-5 w-5 text-white" />
+      <div className="flex h-16 items-center justify-between border-b border-slate-200 px-6 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700">
+            <GraduationCap className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold tracking-tight text-slate-900 dark:text-white">
+              StudyWindow
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              IIT Roorkee
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="font-semibold tracking-tight text-slate-900 dark:text-white">
-            StudyWindow
-          </span>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-            IIT Roorkee
-          </span>
-        </div>
+        <ThemeToggle />
       </div>
 
       {/* Navigation */}

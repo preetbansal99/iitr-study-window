@@ -122,4 +122,16 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Global cursor-pointer for interactive elements */
+  a, button, [role="button"], [tabindex]:not([tabindex="-1"]),
+  input[type="checkbox"], input[type="radio"], select, label[for] {
+    cursor: pointer;
+  }
+  
+  /* Clickable cards */
+  [data-clickable="true"], .cursor-pointer {
+    cursor: pointer;
+  }
 }
+
