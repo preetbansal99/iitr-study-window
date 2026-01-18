@@ -1,19 +1,26 @@
 import { createClient } from "@/lib/supabase/client";
 
-const ALLOWED_DOMAIN = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "@abc.iit.ac.in";
+// Domain suffix for IITR emails (e.g., abc_d@ee.iitr.ac.in, abc_d@cse.iitr.ac.in)
+const ALLOWED_DOMAIN_SUFFIX = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "iitr.ac.in";
 
 /**
  * Validates if an email belongs to the allowed domain
+ * Supports formats like: abc_d@ee.iitr.ac.in, abc_d@cse.iitr.ac.in, demo@iitr.ac.in
  */
 export function isValidEmail(email: string): boolean {
-  return email.toLowerCase().endsWith(ALLOWED_DOMAIN.toLowerCase());
+  const emailLower = email.toLowerCase();
+  const domainSuffix = ALLOWED_DOMAIN_SUFFIX.toLowerCase().replace(/^@/, "");
+  
+  // Check if the email ends with the domain suffix (e.g., iitr.ac.in)
+  // This handles both direct domain (@iitr.ac.in) and subdomains (@ee.iitr.ac.in)
+  return emailLower.endsWith(domainSuffix) || emailLower.endsWith(`.${domainSuffix}`);
 }
 
 /**
  * Get the allowed email domain for display
  */
 export function getAllowedDomain(): string {
-  return ALLOWED_DOMAIN;
+  return ALLOWED_DOMAIN_SUFFIX.startsWith("@") ? ALLOWED_DOMAIN_SUFFIX : `@${ALLOWED_DOMAIN_SUFFIX}`;
 }
 
 /**
@@ -21,7 +28,7 @@ export function getAllowedDomain(): string {
  */
 export async function signInWithMagicLink(email: string) {
   if (!isValidEmail(email)) {
-    throw new Error(`Only ${ALLOWED_DOMAIN} emails are allowed to sign in.`);
+    throw new Error(`Only emails ending with ${getAllowedDomain()} are allowed to sign in.`);
   }
 
   const supabase = createClient();
@@ -40,12 +47,16 @@ export async function signInWithMagicLink(email: string) {
  */
 export async function signInWithGoogle() {
   const supabase = createClient();
+  // Note: Google OAuth 'hd' param restricts to exact domain. For subdomains like ee.iitr.ac.in,
+  // we use the base domain (iitr.ac.in) and do additional validation in the callback
+  const baseDomain = ALLOWED_DOMAIN_SUFFIX.replace(/^@/, "");
+  
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
       queryParams: {
-        hd: ALLOWED_DOMAIN.replace("@", ""), // Restrict to domain in Google OAuth
+        hd: baseDomain, // Restrict to iitr.ac.in domain in Google OAuth
       },
     },
   });

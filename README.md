@@ -22,7 +22,7 @@ Your academic command center at IIT Roorkee. A comprehensive student productivit
 - **Integrated Calendar** - Monthly view combining timetable and events
 
 ### 🔐 Authentication
-- **Institute Email Only** - Restricted to `@iitr.ac.in` domain
+- **Institute Email Only** - Restricted to `*@*.iitr.ac.in` format (e.g., `abc_d@ee.iitr.ac.in`)
 - **Magic Link** - Passwordless email authentication
 - **Google OAuth** - Quick sign-in with Google (domain restricted)
 
