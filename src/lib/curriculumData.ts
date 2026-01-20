@@ -44,130 +44,26 @@ export const BRANCH_ICONS: Record<string, string> = {
 // ============================================
 // ELECTRICAL ENGINEERING (EE) - OFFICIAL IITR CURRICULUM
 // ============================================
-export const EE_CURRICULUM: Semester[] = [
-    {
-        number: 1,
-        courses: [
-            { code: "HSI-101", title: "Soft Skills", credits: 3, type: "core" },
-            { code: "MAI-101", title: "Mathematics-I", credits: 4, type: "core" },
-            { code: "PHI-101", title: "Physics-I", credits: 4, type: "core" },
-            { code: "EEC-101", title: "Programming with C++", credits: 4, type: "core" },
-            { code: "TMI-101", title: "Tinkering and Mentoring", credits: 4, type: "core" },
-            { code: "ECE-101", title: "Fundamentals of Electronics", credits: 4, type: "core" },
-        ],
-    },
-    {
-        number: 2,
-        courses: [
-            { code: "IKS-102", title: "Indian Knowledge System", credits: 2, type: "core" },
-            { code: "MAI-102", title: "Mathematics-II", credits: 4, type: "core" },
-            { code: "ESS-102", title: "Environmental Science & Sustainability", credits: 3, type: "core" },
-            { code: "ECE-103", title: "Digital Electronics", credits: 4, type: "core" },
-            { code: "EEC-102", title: "Basic Electrical Science", credits: 4, type: "core" },
-            { code: "EEC-104", title: "Signals and Systems", credits: 4, type: "core" },
-        ],
-    },
-    {
-        number: 3,
-        courses: [
-            { code: "MSI-101", title: "Fundamentals of Management", credits: 3, type: "core" },
-            { code: "MAB-103", title: "Numerical Methods", credits: 4, type: "core" },
-            { code: "CSE-101", title: "Data Structures & Algorithms", credits: 4, type: "core" },
-            {
-                code: "EEC-201",
-                title: "Network Theory",
-                credits: 4,
-                type: "core",
-                chapters: [
-                    { id: "nt-1", title: "Unit 1: Network Elements & Topology", topics: ["Kirchhoff's Laws", "Node Analysis", "Mesh Analysis"] },
-                    { id: "nt-2", title: "Unit 2: Network Theorems", topics: ["Superposition", "Thevenin's Theorem", "Norton's Theorem"] },
-                    { id: "nt-3", title: "Unit 3: Transient Analysis", topics: ["First Order Circuits", "Second Order Circuits", "Laplace Transform"] },
-                    { id: "nt-4", title: "Unit 4: Two-Port Networks", topics: ["Z-Parameters", "Y-Parameters", "Transmission Parameters"] },
-                ]
-            },
-        ],
-    },
-    {
-        number: 4,
-        courses: [
-            { code: "DAI-101", title: "Data Science", credits: 4, type: "core" },
-            { code: "EEC-202", title: "Electrical & Electronic Measurements", credits: 4, type: "core" },
-            {
-                code: "EEC-204",
-                title: "Control Systems",
-                credits: 5,
-                type: "core",
-                chapters: [
-                    { id: "cs-1", title: "Unit 1: System Modeling", topics: ["Transfer Functions", "Block Diagrams", "Signal Flow Graphs"] },
-                    { id: "cs-2", title: "Unit 2: Time Domain Analysis", topics: ["Transient Response", "Steady State Error", "Stability"] },
-                    { id: "cs-3", title: "Unit 3: Frequency Domain Analysis", topics: ["Bode Plot", "Nyquist Plot", "Polar Plot"] },
-                    { id: "cs-4", title: "Unit 4: State Space Analysis", topics: ["State Variables", "Controllability", "Observability"] },
-                ]
-            },
-            {
-                code: "EEC-206",
-                title: "Electrical Machines",
-                credits: 4,
-                type: "core",
-                chapters: [
-                    { id: "em-1", title: "Unit 1: Transformers", topics: ["Principle of Operation", "Equivalent Circuit", "Losses & Efficiency"] },
-                    { id: "em-2", title: "Unit 2: DC Machines", topics: ["Construction", "EMF Equation", "Characteristics"] },
-                    { id: "em-3", title: "Unit 3: Induction Motors", topics: ["Rotating Magnetic Field", "Slip", "Torque-Speed Curve"] },
-                    { id: "em-4", title: "Unit 4: Synchronous Machines", topics: ["EMF Equation", "Power Angle", "Synchronization"] },
-                ]
-            },
-            { code: "EEC-208", title: "Power Systems-I", credits: 4, type: "core" },
-        ],
-    },
-    {
-        number: 5,
-        courses: [
-            { code: "EEC-351", title: "Fundamentals of AI/ML", credits: 2, type: "core" },
-            {
-                code: "EEC-301",
-                title: "Power Systems-II",
-                credits: 4,
-                type: "core",
-                chapters: [
-                    { id: "ps2-1", title: "Unit 1: Load Flow Analysis", topics: ["Gauss-Seidel", "Newton-Raphson", "Fast Decoupled"] },
-                    { id: "ps2-2", title: "Unit 2: Fault Analysis", topics: ["Symmetrical Faults", "Unsymmetrical Faults", "Sequence Networks"] },
-                    { id: "ps2-3", title: "Unit 3: Power System Stability", topics: ["Rotor Dynamics", "Swing Equation", "Equal Area Criterion"] },
-                    { id: "ps2-4", title: "Unit 4: Economic Operation", topics: ["Economic Dispatch", "Unit Commitment", "Hydrothermal Scheduling"] },
-                ]
-            },
-            {
-                code: "EEC-303",
-                title: "Power Electronics",
-                credits: 4,
-                type: "core",
-                chapters: [
-                    { id: "pe-1", title: "Unit 1: Power Semiconductor Devices", topics: ["SCR", "MOSFET", "IGBT"] },
-                    { id: "pe-2", title: "Unit 2: Rectifiers", topics: ["Uncontrolled", "Controlled", "Dual Converters"] },
-                    { id: "pe-3", title: "Unit 3: DC-DC Converters", topics: ["Buck", "Boost", "Buck-Boost"] },
-                    { id: "pe-4", title: "Unit 4: Inverters", topics: ["VSI", "CSI", "PWM Techniques"] },
-                ]
-            },
-            { code: "EEC-399", title: "Community Outreach", credits: 2, type: "core" },
-        ],
-    },
-    {
-        number: 6,
-        courses: [
-            {
-                code: "EEC-300",
-                title: "Engineering Analysis and Design",
-                credits: 4,
-                type: "core",
-                chapters: [
-                    { id: "ead-1", title: "Unit 1: Problem Formulation", topics: ["Requirements Analysis", "Constraints", "Specifications"] },
-                    { id: "ead-2", title: "Unit 2: Design Methodology", topics: ["Conceptual Design", "Detailed Design", "Prototyping"] },
-                    { id: "ead-3", title: "Unit 3: Analysis Tools", topics: ["Simulation", "Optimization", "Verification"] },
-                ]
-            },
-            { code: "EEC-391", title: "Technical Communication", credits: 2, type: "core" },
-        ],
-    },
-];
+// New comprehensive data in src/lib/curriculum/eeData.ts
+// This maintains backward compatibility with existing components
+
+import { EE_PROGRAM, getEESemester } from './curriculum/eeData';
+
+// Convert new EE data to legacy format for backward compatibility
+export const EE_CURRICULUM: Semester[] = EE_PROGRAM.semesters
+    .filter(sem => sem.number <= 6) // Only show semesters 1-6 in current UI
+    .map(sem => ({
+        number: sem.number as 1 | 2 | 3 | 4 | 5 | 6,
+        courses: sem.courses
+            .filter(c => !c.isElectiveSlot) // Filter out elective slots for now
+            .map(c => ({
+                code: c.code,
+                title: c.title,
+                credits: typeof c.credits === 'number' ? c.credits : c.credits.max,
+                type: c.courseType === 'elective' ? 'elective' as const : 'core' as const,
+                chapters: c.chapters,
+            })),
+    }));
 
 // CSE Curriculum (Year 1-2 only for now)
 export const CSE_CURRICULUM: Semester[] = [

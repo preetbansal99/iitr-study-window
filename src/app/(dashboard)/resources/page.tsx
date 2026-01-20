@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import {
   Cog,
   GraduationCap,
   Clock,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BRANCHES, getSemesterCourses, getTotalCredits, type Branch, type Course } from "@/lib/curriculumData";
@@ -34,6 +36,7 @@ const BranchIcon = ({ iconName, className }: { iconName: string; className?: str
 type ViewState = "gateway" | "academic" | "clubs";
 
 export default function ResourcesPage() {
+  const router = useRouter();
   const [view, setView] = useState<ViewState>("gateway");
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
@@ -129,7 +132,7 @@ export default function ResourcesPage() {
           </p>
         </div>
 
-        <div className="grid w-full max-w-2xl gap-6 md:grid-cols-2">
+        <div className="grid w-full max-w-4xl gap-6 md:grid-cols-3">
           {/* Academic Materials Card */}
           <Card
             className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-xl"
@@ -147,6 +150,27 @@ export default function ResourcesPage() {
               </p>
               <Badge className="mt-4 bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
                 {BRANCHES.length} Branches Available
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {/* General Community Card - NEW */}
+          <Card
+            className="group cursor-pointer border-2 border-transparent transition-all hover:border-purple-500 hover:shadow-xl"
+            onClick={() => router.push("/resources/community")}
+          >
+            <CardContent className="flex flex-col items-center p-8 text-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg transition-transform group-hover:scale-110">
+                <MessageCircle className="h-10 w-10 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                General Community
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Discussions, doubts & peer support
+              </p>
+              <Badge className="mt-4 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                Active Now
               </Badge>
             </CardContent>
           </Card>
@@ -259,38 +283,63 @@ export default function ResourcesPage() {
 
       {/* Semester Selection */}
       {selectedBranch && !selectedSemester && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((sem) => {
-            const courses = getSemesterCourses(selectedBranch, sem);
-            const credits = getTotalCredits(courses);
-            return (
-              <Card
-                key={sem}
-                className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-lg"
-                onClick={() => setSelectedSemester(sem)}
-              >
-                <CardContent className="p-6">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
-                    <span className="text-xl font-bold">{sem}</span>
-                  </div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white">
-                    Semester {sem}
-                  </h3>
-                  <div className="mt-2 flex items-center gap-3 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      {courses.length} courses
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {credits} credits
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <>
+          {/* Branch Community Card - NEW */}
+          <Card
+            className="mb-6 group cursor-pointer border-2 border-transparent transition-all hover:border-purple-500 hover:shadow-lg"
+            onClick={() => router.push(`/resources/${selectedBranch}/community`)}
+          >
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-md transition-transform group-hover:scale-110">
+                <MessageCircle className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  {currentBranch?.shortName} Community
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Connect with peers, ask doubts, share resources
+                </p>
+              </div>
+              <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                Join Discussion
+              </Badge>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((sem) => {
+              const courses = getSemesterCourses(selectedBranch, sem);
+              const credits = getTotalCredits(courses);
+              return (
+                <Card
+                  key={sem}
+                  className="group cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500 hover:shadow-lg"
+                  onClick={() => setSelectedSemester(sem)}
+                >
+                  <CardContent className="p-6">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                      <span className="text-xl font-bold">{sem}</span>
+                    </div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      Semester {sem}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-3 text-sm text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {courses.length} courses
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {credits} credits
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Course Cards */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FocusTimer } from "@/components/dashboard/focus-timer";
 import { TaskList } from "@/components/dashboard/task-list";
 import { ProgressTracker } from "@/components/dashboard/progress-tracker";
@@ -27,6 +27,7 @@ import {
   Moon,
   Sunset,
 } from "lucide-react";
+import { useUserStore } from "@/stores/user-store";
 
 // Demo data
 const DEMO_SCHEDULE = [
@@ -42,6 +43,20 @@ const DEMO_EVENTS = [
   { id: "3", title: "Hackathon", date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], type: "Event", color: "#10b981" },
 ];
 
+// Branch to course code mapping for personalized suggestions
+const BRANCH_COURSES: Record<string, string> = {
+  ee: "EEC-206",
+  ece: "ECN-104",
+  cse: "CSN-221",
+  me: "MEN-203",
+  ce: "CEN-101",
+  che: "CHN-201",
+  bt: "BTN-102",
+  arch: "ARN-102",
+  meta: "MTN-101",
+  phy: "PHN-101",
+};
+
 // Get greeting based on time
 function getGreeting(): { text: string; icon: typeof Sun } {
   const hour = new Date().getHours();
@@ -54,7 +69,22 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false);
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
-  const firstName = "Student";
+
+  // Get user profile for personalized greeting
+  const { profile } = useUserStore();
+
+  // Use username if available, fallback to "Student"
+  const displayName = profile?.username
+    ? profile.username.split("_")[0].charAt(0).toUpperCase() + profile.username.split("_")[0].slice(1)
+    : profile?.fullName?.split(" ")[0] || "Student";
+
+  // Get personalized course suggestion based on branch
+  const suggestedCourse = profile?.branch ? BRANCH_COURSES[profile.branch] : null;
+
+  // Encouraging message based on time of day
+  const encouragingMessage = suggestedCourse
+    ? `Let's focus on ${suggestedCourse} today.`
+    : "Ready to focus?";
 
   return (
     <div className="p-4 lg:p-8">
@@ -95,9 +125,9 @@ export default function DashboardPage() {
               </span>
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white lg:text-4xl">
-              {greeting.text}, {firstName}!
+              {greeting.text}, {displayName}!
             </h1>
-            <p className="mt-2 text-lg text-slate-500">Ready to focus?</p>
+            <p className="mt-2 text-lg text-slate-500">{encouragingMessage}</p>
           </div>
 
           {/* Centered Timer */}

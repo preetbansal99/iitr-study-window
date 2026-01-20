@@ -11,11 +11,16 @@ import {
   Settings,
   LogOut,
   GraduationCap,
+  MessageSquare,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { useUserStore } from "@/stores/user-store";
+import { isAdmin } from "@/lib/permissions";
 
 const navItems = [
   {
@@ -27,6 +32,11 @@ const navItems = [
     title: "Resources",
     href: "/resources",
     icon: BookOpen,
+  },
+  {
+    title: "Community",
+    href: "/community",
+    icon: MessageSquare,
   },
   {
     title: "Timetable",
@@ -48,6 +58,8 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { profile } = useUserStore();
+  const userIsAdmin = isAdmin(profile?.email);
 
   const handleSignOut = async () => {
     await signOut();
@@ -98,8 +110,28 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Sign out */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4 dark:border-slate-800">
+      {/* User section with Admin badge */}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4 dark:border-slate-800 space-y-3">
+        {/* Admin Badge - only visible for admin users */}
+        {userIsAdmin && (
+          <div className="flex items-center justify-center">
+            <Badge className="gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 border-amber-300">
+              <Shield className="h-3 w-3" />
+              Admin
+            </Badge>
+          </div>
+        )}
+
+        {/* User info */}
+        {profile?.username && (
+          <div className="text-center">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              @{profile.username}
+            </p>
+          </div>
+        )}
+
+        {/* Sign out */}
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"

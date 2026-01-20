@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { FloatingTimer } from "@/components/global/floating-timer";
+import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper";
 
 // Development mode check - bypasses auth when Supabase is not configured
 const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,6 +24,7 @@ export default function DashboardLayout({
         <div className="min-h-screen">{children}</div>
       </main>
       <FloatingTimer />
+      <OnboardingWrapper />
     </div>
   );
 }

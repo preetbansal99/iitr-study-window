@@ -124,7 +124,7 @@ export function FocusTimer() {
           <Button
             size="lg"
             className="h-14 gap-3 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-8 text-lg font-semibold shadow-lg transition-all hover:from-indigo-700 hover:to-violet-700 hover:shadow-xl"
-            onClick={startFocus}
+            onClick={() => startFocus()}
           >
             <Play className="h-6 w-6" />
             Start Focus

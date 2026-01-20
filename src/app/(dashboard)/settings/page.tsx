@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useTimerStore } from "@/stores/timer-store";
-import { Settings, User, Clock, Bell, Loader2, CheckCircle2 } from "lucide-react";
+import { Settings, User, Clock, Bell, Loader2, CheckCircle2, ChevronRight } from "lucide-react";
 import type { User as UserProfile } from "@/lib/types";
 
 const BRANCHES = [
@@ -138,15 +139,35 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-2xl space-y-6">
+        {/* Profile Settings Link Card */}
+        <Card className="group cursor-pointer border-2 border-transparent transition-all hover:border-blue-500 hover:shadow-lg">
+          <Link href="/settings/profile">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Profile Settings</CardTitle>
+                  <CardDescription>
+                    Manage username, bio, branch, and preferences
+                  </CardDescription>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+            </CardHeader>
+          </Link>
+        </Card>
+
         {/* Profile Settings */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-blue-600" />
-              Profile
+              Quick Profile
             </CardTitle>
             <CardDescription>
-              Update your personal information
+              Basic profile information (see Profile Settings for more options)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
