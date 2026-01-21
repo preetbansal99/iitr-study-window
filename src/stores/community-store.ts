@@ -70,6 +70,9 @@ interface CommunityState {
     toggleUpvote: (itemId: string, itemType: 'thread' | 'reply', userId: string) => Promise<void>;
     hasUpvoted: (itemId: string, itemType: 'thread' | 'reply', userId: string) => boolean;
 
+    // Actions - Notifications
+    getUnreadCount: (userId: string) => number;
+
     // Actions - Filters
     setThreadSort: (sort: ThreadSortOption) => void;
     setThreadSearch: (search: string) => void;
@@ -375,6 +378,11 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
     hasUpvoted: (itemId, itemType, userId) => {
         return get().upvotes.some(u => u.itemId === itemId && u.itemType === itemType && u.userId === userId);
+    },
+
+    // Notifications - stub for now, returns 0 until notifications are fetched from Supabase
+    getUnreadCount: (userId) => {
+        return get().notifications.filter(n => n.userId === userId && !n.isRead).length;
     },
 
     setThreadSort: (sort) => set({ threadSort: sort }),
