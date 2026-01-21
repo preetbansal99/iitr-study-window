@@ -119,19 +119,87 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
-  
+
   /* Global cursor-pointer for interactive elements */
-  a, button, [role="button"], [tabindex]:not([tabindex="-1"]),
-  input[type="checkbox"], input[type="radio"], select, label[for] {
+  a,
+  button,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label[for] {
     cursor: pointer;
   }
-  
+
   /* Clickable cards */
-  [data-clickable="true"], .cursor-pointer {
+  [data-clickable="true"],
+  .cursor-pointer {
     cursor: pointer;
   }
 }
 
+/* ============================================
+   MODERN ACADEMIC CURSOR (Optional Task 5)
+   Subtle, premium cursor enhancement
+   - Disabled on mobile/touch devices
+   - Respects prefers-reduced-motion
+   - Can be toggled via CSS variable
+   ============================================ */
+
+:root {
+  /* Toggle: set to 'auto' to disable custom cursor */
+  --custom-cursor-enabled: crosshair;
+}
+
+/* Desktop only: subtle crosshair for precision feel on canvas/interactive areas */
+@media (hover: hover) and (pointer: fine) {
+
+  /* Custom cursor for main content areas - feels academic/precise */
+  .custom-cursor-area {
+    cursor: var(--custom-cursor-enabled);
+  }
+
+  /* Interactive elements maintain pointer cursor */
+  .custom-cursor-area a,
+  .custom-cursor-area button,
+  .custom-cursor-area [role="button"],
+  .custom-cursor-area input,
+  .custom-cursor-area select,
+  .custom-cursor-area textarea,
+  .custom-cursor-area label {
+    cursor: pointer;
+  }
+
+  /* Text areas maintain text selection cursor */
+  .custom-cursor-area p,
+  .custom-cursor-area h1,
+  .custom-cursor-area h2,
+  .custom-cursor-area h3,
+  .custom-cursor-area h4,
+  .custom-cursor-area h5,
+  .custom-cursor-area h6,
+  .custom-cursor-area span:not([role]),
+  .custom-cursor-area li {
+    cursor: text;
+  }
+}
+
+/* Disable custom cursor for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --custom-cursor-enabled: auto;
+  }
+}
+
+/* Disable on touch/mobile devices */
+@media (hover: none),
+(pointer: coarse) {
+  :root {
+    --custom-cursor-enabled: auto;
+  }
+}

@@ -10,7 +10,7 @@ const ALLOWED_DOMAIN_SUFFIX = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "i
 export function isValidEmail(email: string): boolean {
   const emailLower = email.toLowerCase();
   const domainSuffix = ALLOWED_DOMAIN_SUFFIX.toLowerCase().replace(/^@/, "");
-  
+
   // Check if the email ends with the domain suffix (e.g., iitr.ac.in)
   // This handles both direct domain (@iitr.ac.in) and subdomains (@ee.iitr.ac.in)
   return emailLower.endsWith(domainSuffix) || emailLower.endsWith(`.${domainSuffix}`);
@@ -50,7 +50,7 @@ export async function signInWithGoogle() {
   // Note: Google OAuth 'hd' param restricts to exact domain. For subdomains like ee.iitr.ac.in,
   // we use the base domain (iitr.ac.in) and do additional validation in the callback
   const baseDomain = ALLOWED_DOMAIN_SUFFIX.replace(/^@/, "");
-  
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -67,24 +67,8 @@ export async function signInWithGoogle() {
 /**
  * Demo credentials for testing
  */
-export const DEMO_CREDENTIALS = {
-  email: "demo@iitr.ac.in",
-  password: "demo123456",
-};
+// Demo logic removed
 
-/**
- * Sign in with demo credentials (email/password)
- */
-export async function signInWithDemo() {
-  const supabase = createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: DEMO_CREDENTIALS.email,
-    password: DEMO_CREDENTIALS.password,
-  });
-
-  if (error) throw error;
-  return data;
-}
 
 /**
  * Sign out

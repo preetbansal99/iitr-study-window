@@ -7,11 +7,13 @@
  * Admin is identified by email: preet_b@ee.iitr.ac.in
  */
 
+import { ADMIN_EMAIL } from '@/lib/supabase/client';
+
 // ============================================
 // ADMIN IDENTIFICATION
 // ============================================
-
-const ADMIN_EMAIL = 'preet_b@ee.iitr.ac.in';
+// ADMIN_EMAIL is imported from @/lib/supabase/client.ts
+// This is the SINGLE SOURCE OF TRUTH for admin identification
 
 export type UserRole = 'ADMIN' | 'STUDENT';
 

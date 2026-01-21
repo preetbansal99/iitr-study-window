@@ -212,49 +212,51 @@ export default function ResourcesPage() {
   // ============================================
   return (
     <div className="p-4 lg:p-8">
-      {/* Header with breadcrumb */}
-      <div className="mb-8">
-        <Button variant="ghost" onClick={goBack} className="mb-4 gap-2">
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </Button>
+      {/* Header with breadcrumb - hide when viewing course detail */}
+      {!selectedCourse && (
+        <div className="mb-8">
+          <Button variant="ghost" onClick={goBack} className="mb-4 gap-2">
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
 
-        {/* Breadcrumb */}
-        <div className="mb-2 flex items-center gap-1 text-sm text-slate-500">
-          {getBreadcrumbItems().map((item, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {i > 0 && <span>/</span>}
-              {item.onClick ? (
-                <button
-                  onClick={item.onClick}
-                  className="hover:text-indigo-600 hover:underline"
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {item.label}
-                </span>
-              )}
-            </span>
-          ))}
+          {/* Breadcrumb */}
+          <div className="mb-2 flex items-center gap-1 text-sm text-slate-500">
+            {getBreadcrumbItems().map((item, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && <span>/</span>}
+                {item.onClick ? (
+                  <button
+                    onClick={item.onClick}
+                    className="hover:text-indigo-600 hover:underline"
+                  >
+                    {item.label}
+                  </button>
+                ) : (
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {item.label}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white lg:text-3xl">
+            {selectedSemester
+              ? `${currentBranch?.shortName} - Semester ${selectedSemester}`
+              : selectedBranch
+                ? currentBranch?.name
+                : "Academic Materials"}
+          </h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
+            {selectedSemester
+              ? `${currentCourses.length} courses • ${getTotalCredits(currentCourses)} credits`
+              : selectedBranch
+                ? "Select your semester"
+                : "Select your branch"}
+          </p>
         </div>
-
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white lg:text-3xl">
-          {selectedSemester
-            ? `${currentBranch?.shortName} - Semester ${selectedSemester}`
-            : selectedBranch
-              ? currentBranch?.name
-              : "Academic Materials"}
-        </h1>
-        <p className="mt-1 text-slate-600 dark:text-slate-400">
-          {selectedSemester
-            ? `${currentCourses.length} courses • ${getTotalCredits(currentCourses)} credits`
-            : selectedBranch
-              ? "Select your semester"
-              : "Select your branch"}
-        </p>
-      </div>
+      )}
 
       {/* Branch Selection */}
       {!selectedBranch && (

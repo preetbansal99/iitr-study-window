@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [timerSaveSuccess, setTimerSaveSuccess] = useState(false);
 
   const {
     focusDuration,
@@ -114,8 +115,8 @@ export default function SettingsPage() {
 
   const handleSaveTimerSettings = () => {
     updateSettings(timerSettings);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setTimerSaveSuccess(true);
+    setTimeout(() => setTimerSaveSuccess(false), 3000);
   };
 
   if (isLoading) {
@@ -394,8 +395,9 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <Button onClick={handleSaveTimerSettings}>
-              Save Timer Settings
+            <Button onClick={handleSaveTimerSettings} className="gap-2">
+              {timerSaveSuccess && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+              {timerSaveSuccess ? "Saved!" : "Save Timer Settings"}
             </Button>
           </CardContent>
         </Card>

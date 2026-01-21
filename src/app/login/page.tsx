@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { GraduationCap, Mail, Loader2, CheckCircle2, User, BookOpen, Users, Calendar } from "lucide-react";
-import { signInWithMagicLink, signInWithGoogle, signInWithDemo, getAllowedDomain, DEMO_CREDENTIALS } from "@/lib/auth";
+import { signInWithMagicLink, signInWithGoogle, getAllowedDomain } from "@/lib/auth";
 
 // ============================================
 // CURSOR TRACKING HOOK
@@ -96,7 +96,6 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -139,18 +138,7 @@ function LoginForm() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsDemoLoading(true);
-    setError(null);
 
-    try {
-      await signInWithDemo();
-      window.location.href = "/dashboard";
-    } catch (err) {
-      setError((err as Error).message);
-      setIsDemoLoading(false);
-    }
-  };
 
   // Success state
   if (success) {
@@ -238,8 +226,8 @@ function LoginForm() {
 
         <Card
           className={`relative z-10 w-full max-w-md border-slate-200 shadow-lg transition-all duration-300 dark:border-slate-800 ${isCardHovered && showCursorEffects
-              ? 'shadow-xl shadow-indigo-500/10 dark:shadow-indigo-400/5'
-              : ''
+            ? 'shadow-xl shadow-indigo-500/10 dark:shadow-indigo-400/5'
+            : ''
             }`}
           onMouseEnter={() => setIsCardHovered(true)}
           onMouseLeave={() => setIsCardHovered(false)}
@@ -322,30 +310,7 @@ function LoginForm() {
                 We only access your email for authentication.
               </p>
 
-              {/* Demo Login */}
-              <Button
-                type="button"
-                variant="outline"
-                className={`w-full gap-2 py-5 transition-all duration-200 ${showCursorEffects ? 'hover:scale-[1.01]' : ''
-                  }`}
-                onClick={handleDemoLogin}
-                disabled={isDemoLoading}
-              >
-                {isDemoLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading demo...</span>
-                  </>
-                ) : (
-                  <>
-                    <User className="h-5 w-5" />
-                    <span>Try Demo Account</span>
-                  </>
-                )}
-              </Button>
-              <p className="text-center text-xs text-slate-500">
-                Demo: <strong>{DEMO_CREDENTIALS.email}</strong>
-              </p>
+
 
               {/* Separator */}
               <div className="relative py-2">

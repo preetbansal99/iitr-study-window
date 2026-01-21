@@ -62,10 +62,7 @@ export default function GeneralCommunityPage() {
     // Filter general channels only
     const generalChannels = channels.filter(c => c.channelType === 'general');
 
-    // Get thread count per channel
-    const getThreadCount = (channelId: string) => {
-        return threads.filter(t => t.channelId === channelId).length;
-    };
+
 
     // Get posting policy badge
     const getPolicyBadge = (policy: PostingPolicy) => {
@@ -200,7 +197,21 @@ export default function GeneralCommunityPage() {
                 )}
             </div>
 
+            {/* Instructional guidance for users */}
+            <div className="mb-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 p-4">
+                <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                    <strong>💡 How to start a discussion:</strong> Click on any channel below to enter it,
+                    then use the "New Thread" button to create your post.
+                </p>
+            </div>
+
             {/* Channel Grid */}
+            <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Available Channels
+                </h2>
+                <Badge variant="secondary">{generalChannels.length} channels</Badge>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {generalChannels.map((channel) => (
                     <Card
@@ -235,7 +246,7 @@ export default function GeneralCommunityPage() {
                                     </span>
                                     <span className="flex items-center gap-1">
                                         <MessageSquare className="h-4 w-4" />
-                                        {getThreadCount(channel.id)} threads
+                                        {channel.threadCount || 0} threads
                                     </span>
                                 </div>
 

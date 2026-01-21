@@ -77,12 +77,7 @@ interface UserState {
 }
 
 // Demo users for uniqueness testing
-const DEMO_USERNAMES = [
-    'john_doe',
-    'jane_smith',
-    'preet_b',
-    'demo_user',
-];
+// Demo usernames removed
 
 export const useUserStore = create<UserState>()(
     persist(
@@ -90,7 +85,7 @@ export const useUserStore = create<UserState>()(
             profile: null,
             isLoading: false,
             error: null,
-            allUsernames: [...DEMO_USERNAMES],
+            allUsernames: [],
             demoRole: null,
 
             // Demo mode role override setter

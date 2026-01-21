@@ -45,6 +45,7 @@ export interface Channel {
     createdAt: string;                // ISO timestamp
     lastActivityAt: string;           // ISO timestamp
     membersCount: number;
+    threadCount?: number;
     isPrivate?: boolean;              // course channels = private to enrolled
     pinnedThreadId?: string;
     avatarUrl?: string;

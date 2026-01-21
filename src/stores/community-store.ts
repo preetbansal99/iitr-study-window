@@ -1,9 +1,8 @@
+"use client";
+
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createClient } from '@/lib/supabase/client';
 import {
-    THREAD_TTL_DAYS,
-    PINNED_THREAD_TTL_DAYS,
-    REPLY_TTL_DAYS,
     type Channel,
     type Thread,
     type Reply,
@@ -14,30 +13,15 @@ import {
     type ThreadTag,
     type ThreadSortOption,
 } from '@/lib/community/types';
-import {
-    DEMO_CHANNELS,
-    DEMO_THREADS,
-    DEMO_REPLIES,
-    DEMO_NOTIFICATIONS,
-    DEMO_MEMBERSHIPS,
-    DEMO_USERS,
-    isExpired,
-    calculateExpiresAt,
-    calculateReplyExpiresAt,
-} from '@/lib/community/mockData';
-import { isAdmin } from '@/lib/permissions';
 
-/**
- * Community Store
- * ================
- * Manages all community data in mock mode with persistence
- */
+// Supabase constants - inferred from component usage
+// We assume tables: channels, threads, replies, upvotes, memberships
 
 interface CommunityState {
     // Data
     channels: Channel[];
-    threads: Thread[];
-    replies: Reply[];
+    threads: Thread[]; // Cache of fetched threads
+    replies: Reply[]; // Cache of fetched replies
     notifications: Notification[];
     memberships: Membership[];
     users: CommunityUser[];
@@ -54,368 +38,346 @@ interface CommunityState {
     threadSearch: string;
     threadTagFilter: ThreadTag | null;
 
+    // Actions - Fetching
+    initialize: () => Promise<void>; // Fetches channels and user memberships
+    fetchThreads: (channelId: string) => Promise<void>;
+    fetchReplies: (threadId: string) => Promise<void>;
+
     // Actions - Channels
     setActiveChannel: (channelId: string | null) => void;
     getChannel: (channelId: string) => Channel | undefined;
+    getUser: (userId: string) => CommunityUser | undefined;
     getChannelsForUser: (userId: string) => Channel[];
-    joinChannel: (userId: string, channelId: string) => void;
-    leaveChannel: (userId: string, channelId: string) => void;
+    joinChannel: (userId: string, channelId: string) => Promise<void>;
+    leaveChannel: (userId: string, channelId: string) => Promise<void>;
 
     // Actions - Threads
     setActiveThread: (threadId: string | null) => void;
     getThread: (threadId: string) => Thread | undefined;
-    getThreadsForChannel: (channelId: string) => Thread[];
-    createThread: (thread: Omit<Thread, 'id' | 'createdAt' | 'updatedAt' | 'upvotesCount' | 'replyCount' | 'lastActivityAt' | 'expiresAt'>) => Thread;
-    updateThread: (threadId: string, updates: Partial<Thread>) => void;
-    deleteThread: (threadId: string) => void;
-    pinThread: (threadId: string) => void;
-    unpinThread: (threadId: string) => void;
+    getThreadsForChannel: (channelId: string) => Thread[]; // Returns from cache
+    createThread: (thread: Omit<Thread, 'id' | 'createdAt' | 'updatedAt' | 'upvotesCount' | 'replyCount' | 'lastActivityAt' | 'expiresAt'>) => Promise<Thread | null>;
+    updateThread: (threadId: string, updates: Partial<Thread>) => Promise<void>;
+    deleteThread: (threadId: string) => Promise<void>;
+    pinThread: (threadId: string) => Promise<void>;
+    unpinThread: (threadId: string) => Promise<void>;
 
     // Actions - Replies
-    getRepliesForThread: (threadId: string) => Reply[];
-    createReply: (reply: Omit<Reply, 'id' | 'createdAt' | 'upvotesCount' | 'expiresAt'>) => Reply;
-    deleteReply: (replyId: string) => void;
+    getRepliesForThread: (threadId: string) => Reply[]; // Returns from cache
+    createReply: (reply: Omit<Reply, 'id' | 'createdAt' | 'upvotesCount' | 'expiresAt'>) => Promise<Reply | null>;
+    deleteReply: (replyId: string) => Promise<void>;
 
     // Actions - Upvotes
-    toggleUpvote: (itemId: string, itemType: 'thread' | 'reply', userId: string) => void;
+    toggleUpvote: (itemId: string, itemType: 'thread' | 'reply', userId: string) => Promise<void>;
     hasUpvoted: (itemId: string, itemType: 'thread' | 'reply', userId: string) => boolean;
-
-    // Actions - Notifications
-    getUnreadCount: (userId: string) => number;
-    markNotificationRead: (notificationId: string) => void;
-    markAllNotificationsRead: (userId: string) => void;
 
     // Actions - Filters
     setThreadSort: (sort: ThreadSortOption) => void;
     setThreadSearch: (search: string) => void;
     setThreadTagFilter: (tag: ThreadTag | null) => void;
-
-    // Actions - Users
-    getUser: (userId: string) => CommunityUser | undefined;
-
-    // Initialize
-    initialize: () => void;
 }
 
-// Helper to generate unique IDs
-const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export const useCommunityStore = create<CommunityState>((set, get) => ({
+    channels: [],
+    threads: [],
+    replies: [],
+    notifications: [],
+    memberships: [],
+    users: [],
+    upvotes: [],
 
-export const useCommunityStore = create<CommunityState>()(
-    persist(
-        (set, get) => ({
-            // Initial data
-            channels: [],
-            threads: [],
-            replies: [],
-            notifications: [],
-            memberships: [],
-            users: [],
-            upvotes: [],
+    activeChannelId: null,
+    activeThreadId: null,
+    isLoading: false,
+    error: null,
 
-            // UI State
-            activeChannelId: null,
-            activeThreadId: null,
-            isLoading: false,
-            error: null,
+    threadSort: 'latest',
+    threadSearch: '',
+    threadTagFilter: null,
 
-            // Filters
-            threadSort: 'latest',
-            threadSearch: '',
-            threadTagFilter: null,
+    initialize: async () => {
+        set({ isLoading: true });
+        const supabase = createClient();
 
-            // Initialize with demo data
-            initialize: () => {
-                const state = get();
-                if (state.channels.length === 0) {
-                    set({
-                        channels: [...DEMO_CHANNELS],
-                        threads: [...DEMO_THREADS],
-                        replies: [...DEMO_REPLIES],
-                        notifications: [...DEMO_NOTIFICATIONS],
-                        memberships: [...DEMO_MEMBERSHIPS],
-                        users: [...DEMO_USERS],
-                    });
-                }
-            },
+        // Fetch public channels with counts
+        const { data: channelsData, error: channelsError } = await supabase
+            .from('channels')
+            .select('*, threads(count), memberships(count)');
 
-            // Channel Actions
-            setActiveChannel: (channelId) => set({ activeChannelId: channelId, activeThreadId: null }),
-
-            getChannel: (channelId) => get().channels.find(c => c.id === channelId),
-
-            getChannelsForUser: (userId) => {
-                const { channels, memberships } = get();
-                const userMemberships = memberships.filter(m => m.userId === userId);
-                return channels.filter(c =>
-                    !c.isPrivate || userMemberships.some(m => m.channelId === c.id)
-                );
-            },
-
-            joinChannel: (userId, channelId) => {
-                set((state) => {
-                    const exists = state.memberships.some(
-                        m => m.userId === userId && m.channelId === channelId
-                    );
-                    if (exists) return state;
-
-                    const channel = state.channels.find(c => c.id === channelId);
-
-                    return {
-                        memberships: [
-                            ...state.memberships,
-                            { userId, channelId, role: 'member', joinedAt: new Date().toISOString() },
-                        ],
-                        channels: state.channels.map(c =>
-                            c.id === channelId
-                                ? { ...c, membersCount: c.membersCount + 1 }
-                                : c
-                        ),
-                    };
-                });
-            },
-
-            leaveChannel: (userId, channelId) => {
-                set((state) => ({
-                    memberships: state.memberships.filter(
-                        m => !(m.userId === userId && m.channelId === channelId)
-                    ),
-                    channels: state.channels.map(c =>
-                        c.id === channelId
-                            ? { ...c, membersCount: Math.max(0, c.membersCount - 1) }
-                            : c
-                    ),
-                }));
-            },
-
-            // Thread Actions
-            setActiveThread: (threadId) => set({ activeThreadId: threadId }),
-
-            getThread: (threadId) => get().threads.find(t => t.id === threadId),
-
-            getThreadsForChannel: (channelId) => {
-                const { threads, threadSort, threadSearch, threadTagFilter } = get();
-
-                // Filter by channel and exclude expired threads
-                let filtered = threads.filter(t =>
-                    t.channelId === channelId && !isExpired(t.expiresAt)
-                );
-
-                // Apply search filter
-                if (threadSearch) {
-                    const search = threadSearch.toLowerCase();
-                    filtered = filtered.filter(t =>
-                        t.title.toLowerCase().includes(search) ||
-                        t.body.toLowerCase().includes(search)
-                    );
-                }
-
-                // Apply tag filter
-                if (threadTagFilter) {
-                    filtered = filtered.filter(t => t.tags.includes(threadTagFilter));
-                }
-
-                // Sort
-                switch (threadSort) {
-                    case 'popular':
-                        filtered.sort((a, b) => b.upvotesCount - a.upvotesCount);
-                        break;
-                    case 'unanswered':
-                        filtered = filtered.filter(t => t.replyCount === 0);
-                        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                        break;
-                    case 'latest':
-                    default:
-                        filtered.sort((a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime());
-                }
-
-                // Pinned threads always at top
-                const pinned = filtered.filter(t => t.isPinned);
-                const unpinned = filtered.filter(t => !t.isPinned);
-
-                return [...pinned, ...unpinned];
-            },
-
-            createThread: (threadData) => {
-                const now = new Date().toISOString();
-                const isPinned = threadData.isPinned || false;
-                const newThread: Thread = {
-                    ...threadData,
-                    id: generateId('thread'),
-                    createdAt: now,
-                    updatedAt: now,
-                    upvotesCount: 0,
-                    replyCount: 0,
-                    lastActivityAt: now,
-                    expiresAt: calculateExpiresAt(now, isPinned),
-                };
-
-                set((state) => ({
-                    threads: [newThread, ...state.threads],
-                    channels: state.channels.map(c =>
-                        c.id === threadData.channelId
-                            ? { ...c, lastActivityAt: now }
-                            : c
-                    ),
-                }));
-
-                return newThread;
-            },
-
-            updateThread: (threadId, updates) => {
-                set((state) => ({
-                    threads: state.threads.map(t =>
-                        t.id === threadId
-                            ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-                            : t
-                    ),
-                }));
-            },
-
-            deleteThread: (threadId) => {
-                set((state) => ({
-                    threads: state.threads.filter(t => t.id !== threadId),
-                    replies: state.replies.filter(r => r.threadId !== threadId),
-                }));
-            },
-
-            pinThread: (threadId) => {
-                get().updateThread(threadId, { isPinned: true });
-            },
-
-            unpinThread: (threadId) => {
-                get().updateThread(threadId, { isPinned: false });
-            },
-
-            // Reply Actions
-            getRepliesForThread: (threadId) => {
-                // Filter out expired replies
-                return get().replies.filter(r =>
-                    r.threadId === threadId && !isExpired(r.expiresAt)
-                );
-            },
-
-            createReply: (replyData) => {
-                const now = new Date().toISOString();
-                const newReply: Reply = {
-                    ...replyData,
-                    id: generateId('reply'),
-                    createdAt: now,
-                    upvotesCount: 0,
-                    expiresAt: calculateReplyExpiresAt(now),
-                };
-
-                set((state) => ({
-                    replies: [...state.replies, newReply],
-                    threads: state.threads.map(t =>
-                        t.id === replyData.threadId
-                            ? { ...t, replyCount: t.replyCount + 1, lastActivityAt: now }
-                            : t
-                    ),
-                }));
-
-                return newReply;
-            },
-
-            deleteReply: (replyId) => {
-                const reply = get().replies.find(r => r.id === replyId);
-                if (!reply) return;
-
-                set((state) => ({
-                    replies: state.replies.filter(r => r.id !== replyId),
-                    threads: state.threads.map(t =>
-                        t.id === reply.threadId
-                            ? { ...t, replyCount: Math.max(0, t.replyCount - 1) }
-                            : t
-                    ),
-                }));
-            },
-
-            // Upvote Actions
-            toggleUpvote: (itemId, itemType, userId) => {
-                const { upvotes } = get();
-                const existingUpvote = upvotes.find(
-                    u => u.itemId === itemId && u.itemType === itemType && u.userId === userId
-                );
-
-                if (existingUpvote) {
-                    // Remove upvote
-                    set((state) => ({
-                        upvotes: state.upvotes.filter(u => u.id !== existingUpvote.id),
-                        threads: itemType === 'thread'
-                            ? state.threads.map(t => t.id === itemId ? { ...t, upvotesCount: Math.max(0, t.upvotesCount - 1) } : t)
-                            : state.threads,
-                        replies: itemType === 'reply'
-                            ? state.replies.map(r => r.id === itemId ? { ...r, upvotesCount: Math.max(0, r.upvotesCount - 1) } : r)
-                            : state.replies,
-                    }));
-                } else {
-                    // Add upvote
-                    const newUpvote: Upvote = {
-                        id: generateId('upvote'),
-                        itemId,
-                        itemType,
-                        userId,
-                        createdAt: new Date().toISOString(),
-                    };
-
-                    set((state) => ({
-                        upvotes: [...state.upvotes, newUpvote],
-                        threads: itemType === 'thread'
-                            ? state.threads.map(t => t.id === itemId ? { ...t, upvotesCount: t.upvotesCount + 1 } : t)
-                            : state.threads,
-                        replies: itemType === 'reply'
-                            ? state.replies.map(r => r.id === itemId ? { ...r, upvotesCount: r.upvotesCount + 1 } : r)
-                            : state.replies,
-                    }));
-                }
-            },
-
-            hasUpvoted: (itemId, itemType, userId) => {
-                return get().upvotes.some(
-                    u => u.itemId === itemId && u.itemType === itemType && u.userId === userId
-                );
-            },
-
-            // Notification Actions
-            getUnreadCount: (userId) => {
-                return get().notifications.filter(n => n.userId === userId && !n.isRead).length;
-            },
-
-            markNotificationRead: (notificationId) => {
-                set((state) => ({
-                    notifications: state.notifications.map(n =>
-                        n.id === notificationId ? { ...n, isRead: true } : n
-                    ),
-                }));
-            },
-
-            markAllNotificationsRead: (userId) => {
-                set((state) => ({
-                    notifications: state.notifications.map(n =>
-                        n.userId === userId ? { ...n, isRead: true } : n
-                    ),
-                }));
-            },
-
-            // Filter Actions
-            setThreadSort: (sort) => set({ threadSort: sort }),
-            setThreadSearch: (search) => set({ threadSearch: search }),
-            setThreadTagFilter: (tag) => set({ threadTagFilter: tag }),
-
-            // User Actions
-            getUser: (userId) => get().users.find(u => u.id === userId),
-        }),
-        {
-            name: 'community-storage',
-            partialize: (state) => ({
-                channels: state.channels,
-                threads: state.threads,
-                replies: state.replies,
-                notifications: state.notifications,
-                memberships: state.memberships,
-                users: state.users,
-                upvotes: state.upvotes,
-            }),
+        if (channelsError) {
+            console.error('Error fetching channels:', channelsError);
         }
-    )
-);
+
+        const channels = (channelsData || []).map((c: any) => ({
+            ...c,
+            // Map Supabase count response which comes as [{ count: n }]
+            threadCount: c.threads?.[0]?.count || 0,
+            membersCount: c.memberships?.[0]?.count || c.members_count || 0,
+            // Ensure camelCase keys if DB is snake_case (Supabase JS client might auto-convert if configured, but explicit is safer or assuming DB matches types)
+            channelType: c.channel_type || c.channelType,
+            postingPolicy: c.posting_policy || c.postingPolicy,
+            createdAt: c.created_at || c.createdAt,
+            createdBy: c.created_by || c.createdBy,
+        }));
+
+        // Fetch user memberships if logged in
+        const { data: { user } } = await supabase.auth.getUser();
+        let memberships: Membership[] = [];
+        let upvotes: Upvote[] = [];
+
+        if (user) {
+            const { data: members } = await supabase
+                .from('memberships')
+                .select('*')
+                .eq('user_id', user.id);
+            memberships = members || [];
+
+            const { data: votes } = await supabase
+                .from('upvotes')
+                .select('*')
+                .eq('user_id', user.id);
+            upvotes = votes || [];
+        }
+
+        set({
+            channels: channels || [],
+            memberships: memberships,
+            upvotes: upvotes,
+            isLoading: false
+        });
+    },
+
+    fetchThreads: async (channelId: string) => {
+        set({ isLoading: true });
+        const supabase = createClient();
+
+        const { data: threads, error } = await supabase
+            .from('threads')
+            .select('*')
+            .eq('channel_id', channelId)
+            .order('last_activity_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching threads:', error);
+            set({ isLoading: false });
+            return;
+        }
+
+        // Merge with existing threads (replace ones for this channel)
+        set(state => ({
+            threads: [
+                ...state.threads.filter(t => t.channelId !== channelId),
+                ...(threads || []).map(t => ({ ...t, channelId: t.channel_id, createdAt: t.created_at, updatedAt: t.updated_at, lastActivityAt: t.last_activity_at, upvotesCount: t.upvotes_count, replyCount: t.reply_count, isPinned: t.is_pinned })) // Map snake_case to camelCase if needed, assuming Supabase returns snake
+            ],
+            isLoading: false
+        }));
+    },
+
+    fetchReplies: async (threadId: string) => {
+        const supabase = createClient();
+        const { data: replies, error } = await supabase
+            .from('replies')
+            .select('*')
+            .eq('thread_id', threadId)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching replies:', error);
+            return;
+        }
+
+        set(state => ({
+            replies: [
+                ...state.replies.filter(r => r.threadId !== threadId),
+                ...(replies || []).map(r => ({ ...r, threadId: r.thread_id, createdAt: r.created_at, upvotesCount: r.upvotes_count }))
+            ]
+        }));
+    },
+
+    setActiveChannel: (channelId) => set({ activeChannelId: channelId, activeThreadId: null }),
+
+    getChannel: (channelId) => get().channels.find(c => c.id === channelId),
+
+    getUser: (userId) => get().users.find(u => u.id === userId),
+
+    getChannelsForUser: (userId) => {
+        return get().channels; // Simplified for now, verify private implementation later
+    },
+
+    joinChannel: async (userId, channelId) => {
+        // Implementation TODO
+    },
+    leaveChannel: async (userId, channelId) => {
+        // Implementation TODO
+    },
+
+    setActiveThread: (threadId) => set({ activeThreadId: threadId }),
+
+    getThread: (threadId) => get().threads.find(t => t.id === threadId),
+
+    getThreadsForChannel: (channelId) => {
+        const { threads, threadSort, threadSearch, threadTagFilter } = get();
+        // Client-side filtering of cached threads
+        let filtered = threads.filter(t => t.channelId === channelId);
+
+        if (threadSearch) {
+            const search = threadSearch.toLowerCase();
+            filtered = filtered.filter(t =>
+                t.title.toLowerCase().includes(search) ||
+                t.body.toLowerCase().includes(search)
+            );
+        }
+
+        if (threadTagFilter) {
+            filtered = filtered.filter(t => t.tags && t.tags.includes(threadTagFilter));
+        }
+
+        // Sort logic similar to before...
+        return filtered;
+    },
+
+    createThread: async (threadData) => {
+        const supabase = createClient();
+        const { data: user } = await supabase.auth.getUser();
+
+        const payload = {
+            channel_id: threadData.channelId,
+            title: threadData.title,
+            body: threadData.body,
+            tags: threadData.tags,
+            created_by: user.user?.id || 'anonymous',
+            is_anonymous: threadData.isAnonymous,
+            // Assuming default timestamps and counts in DB
+        };
+
+        const { data, error } = await supabase
+            .from('threads')
+            .insert(payload)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating thread:', error);
+            return null;
+        }
+
+        const mappedThread = {
+            ...data,
+            channelId: data.channel_id,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
+            lastActivityAt: data.last_activity_at,
+            upvotesCount: data.upvotes_count,
+            replyCount: data.reply_count,
+            isPinned: data.is_pinned
+        };
+
+        set(state => ({
+            threads: [mappedThread, ...state.threads]
+        }));
+        return mappedThread;
+    },
+
+    updateThread: async (threadId, updates) => {
+        // TODO implementation
+    },
+
+    deleteThread: async (threadId) => {
+        const supabase = createClient();
+        await supabase.from('threads').delete().eq('id', threadId);
+        set(state => ({
+            threads: state.threads.filter(t => t.id !== threadId)
+        }));
+    },
+
+    pinThread: async (threadId) => {
+        const supabase = createClient();
+        await supabase.from('threads').update({ is_pinned: true }).eq('id', threadId);
+        set(state => ({
+            threads: state.threads.map(t => t.id === threadId ? { ...t, isPinned: true } : t)
+        }));
+    },
+
+    unpinThread: async (threadId) => {
+        const supabase = createClient();
+        await supabase.from('threads').update({ is_pinned: false }).eq('id', threadId);
+        set(state => ({
+            threads: state.threads.map(t => t.id === threadId ? { ...t, isPinned: false } : t)
+        }));
+    },
+
+    getRepliesForThread: (threadId) => {
+        return get().replies.filter(r => r.threadId === threadId);
+    },
+
+    createReply: async (replyData) => {
+        const supabase = createClient();
+        const { data: user } = await supabase.auth.getUser();
+
+        const payload = {
+            thread_id: replyData.threadId,
+            body: replyData.body,
+            created_by: user.user?.id || 'anonymous',
+            is_anonymous: replyData.isAnonymous
+        };
+
+        const { data, error } = await supabase
+            .from('replies')
+            .insert(payload)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating reply:', error);
+            return null;
+        }
+
+        const mappedReply = {
+            ...data,
+            threadId: data.thread_id,
+            createdAt: data.created_at,
+            upvotesCount: data.upvotes_count
+        };
+
+        set(state => ({
+            replies: [...state.replies, mappedReply]
+        }));
+        return mappedReply;
+    },
+
+    deleteReply: async (replyId) => {
+        const supabase = createClient();
+        await supabase.from('replies').delete().eq('id', replyId);
+        set(state => ({
+            replies: state.replies.filter(r => r.id !== replyId)
+        }));
+    },
+
+    toggleUpvote: async (itemId, itemType, userId) => {
+        const supabase = createClient();
+        const hasUpvoted = get().hasUpvoted(itemId, itemType, userId);
+
+        if (hasUpvoted) {
+            // Delete
+            await supabase.from('upvotes').delete().match({ item_id: itemId, item_type: itemType, user_id: userId });
+            set(state => ({
+                upvotes: state.upvotes.filter(u => !(u.itemId === itemId && u.itemType === itemType && u.userId === userId))
+            }));
+        } else {
+            // Create
+            const { data } = await supabase.from('upvotes').insert({ item_id: itemId, item_type: itemType, user_id: userId }).select().single();
+            if (data) {
+                set(state => ({
+                    upvotes: [...state.upvotes, { ...data, itemId: data.item_id, itemType: data.item_type, userId: data.user_id }]
+                }));
+            }
+        }
+    },
+
+    hasUpvoted: (itemId, itemType, userId) => {
+        return get().upvotes.some(u => u.itemId === itemId && u.itemType === itemType && u.userId === userId);
+    },
+
+    setThreadSort: (sort) => set({ threadSort: sort }),
+    setThreadSearch: (search) => set({ threadSearch: search }),
+    setThreadTagFilter: (tag) => set({ threadTagFilter: tag }),
+}));

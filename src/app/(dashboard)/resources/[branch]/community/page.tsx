@@ -59,7 +59,7 @@ export default function BranchCommunityPage() {
     const branch = (params.branch as string)?.toLowerCase() || "";
     const branchName = BRANCH_NAMES[branch] || branch.toUpperCase();
 
-    const { channels, threads, initialize, createThread, getUser, toggleUpvote, hasUpvoted } = useCommunityStore();
+    const { channels, threads, initialize, createThread, getUser, toggleUpvote, hasUpvoted, fetchThreads } = useCommunityStore();
     const { profile } = useUserStore();
 
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -74,6 +74,8 @@ export default function BranchCommunityPage() {
         initialize();
     }, [initialize]);
 
+
+
     // Check if current user is admin
     const userEmail = profile?.email || null;
     const userIsAdmin = isAdmin(userEmail);
@@ -86,6 +88,13 @@ export default function BranchCommunityPage() {
     const channelId = branchChannel?.id || 'channel-general';
     const postingPolicy = branchChannel?.postingPolicy || 'STUDENT_ALLOWED';
     const channelType = branchChannel?.channelType || 'branch';
+
+    // Fetch threads when channel is determined
+    useEffect(() => {
+        if (channelId) {
+            fetchThreads(channelId);
+        }
+    }, [fetchThreads, channelId]);
 
     // Check posting permission
     const canPost = canPostInChannel(ctx, postingPolicy, channelType, {
@@ -110,14 +119,13 @@ export default function BranchCommunityPage() {
         setIsSubmitting(true);
 
         try {
-            createThread({
+            await createThread({
                 channelId,
                 title: newTitle.trim(),
                 body: newBody.trim(),
                 tags: [newTag],
                 createdBy: isAnonymous ? null : userId,
                 isAnonymous,
-                isPinned: false,
             });
 
             setNewTitle("");

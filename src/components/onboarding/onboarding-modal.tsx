@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useUserStore } from "@/stores/user-store";
-import { createClient, DEMO_MODE, DEMO_USER } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import {
     validateUsernameFormat,
     normalizeUsername,
@@ -62,14 +62,10 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
     // Initialize user on mount
     useEffect(() => {
         const initUser = async () => {
-            if (DEMO_MODE) {
-                initializeUser(DEMO_USER.email, DEMO_USER.id);
-            } else {
-                const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    initializeUser(user.email || "", user.id);
-                }
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                initializeUser(user.email || "", user.id);
             }
         };
         initUser();

@@ -61,6 +61,8 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
         createReply,
         toggleUpvote,
         hasUpvoted,
+        fetchThreads,
+        fetchReplies,
         threadSort,
         threadSearch,
         threadTagFilter,
@@ -71,7 +73,7 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
 
     const { profile } = useUserStore();
 
-    const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+    const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
     const [isComposerOpen, setIsComposerOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,9 +90,23 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
         initialize();
     }, [initialize]);
 
+    useEffect(() => {
+        if (channelId) {
+            fetchThreads(channelId);
+        }
+    }, [fetchThreads, channelId]);
+
+    useEffect(() => {
+        if (selectedThreadId) {
+            // Fetch replies when thread is selected
+            fetchReplies(selectedThreadId);
+        }
+    }, [fetchReplies, selectedThreadId]);
+
     const channel = getChannel(channelId);
     const channelThreads = getThreadsForChannel(channelId);
-    const userId = profile?.id || 'demo-user-123';
+    const selectedThread = selectedThreadId ? threads.find(t => t.id === selectedThreadId) || null : null;
+    const userId = profile?.id || null;
 
     if (!channel) {
         return (
@@ -113,7 +129,9 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
 
         setIsSubmitting(true);
 
-        createThread({
+        setIsSubmitting(true);
+
+        await createThread({
             channelId,
             title: newTitle.trim(),
             body: newBody.trim(),
@@ -135,19 +153,18 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
 
         setIsSubmitting(true);
 
-        createReply({
+        await createReply({
             threadId: selectedThread.id,
             body: replyBody.trim(),
-            createdBy: userId,
+            createdBy: userId!,
             isAnonymous: false,
         });
 
         setReplyBody("");
         setIsSubmitting(false);
 
-        // Refresh thread data
-        const updatedThread = threads.find(t => t.id === selectedThread.id);
-        if (updatedThread) setSelectedThread(updatedThread);
+        setReplyBody("");
+        setIsSubmitting(false);
     };
 
     const threadReplies = selectedThread ? getRepliesForThread(selectedThread.id) : [];
@@ -231,12 +248,12 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
                         <div className="divide-y">
                             {channelThreads.map((thread) => {
                                 const author = thread.createdBy ? getUser(thread.createdBy) : null;
-                                const isSelected = selectedThread?.id === thread.id;
+                                const isSelected = selectedThreadId === thread.id;
 
                                 return (
                                     <button
                                         key={thread.id}
-                                        onClick={() => setSelectedThread(thread)}
+                                        onClick={() => setSelectedThreadId(thread.id)}
                                         className={cn(
                                             "w-full text-left p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800",
                                             isSelected && "bg-indigo-50 dark:bg-indigo-950"
@@ -317,9 +334,9 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
                                         size="sm"
                                         className={cn(
                                             "gap-1",
-                                            hasUpvoted(selectedThread.id, 'thread', userId) && "text-indigo-600"
+                                            userId && hasUpvoted(selectedThread.id, 'thread', userId) && "text-indigo-600"
                                         )}
-                                        onClick={() => toggleUpvote(selectedThread.id, 'thread', userId)}
+                                        onClick={() => userId && toggleUpvote(selectedThread.id, 'thread', userId)}
                                     >
                                         <ThumbsUp className="h-4 w-4" />
                                         {selectedThread.upvotesCount}
@@ -360,9 +377,9 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
                                                                 size="sm"
                                                                 className={cn(
                                                                     "h-7 gap-1 text-xs",
-                                                                    hasUpvoted(reply.id, 'reply', userId) && "text-indigo-600"
+                                                                    userId && hasUpvoted(reply.id, 'reply', userId) && "text-indigo-600"
                                                                 )}
-                                                                onClick={() => toggleUpvote(reply.id, 'reply', userId)}
+                                                                onClick={() => userId && toggleUpvote(reply.id, 'reply', userId)}
                                                             >
                                                                 <ThumbsUp className="h-3 w-3" />
                                                                 {reply.upvotesCount}
