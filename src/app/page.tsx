@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
-  GraduationCap,
   BookOpen,
+  FolderArchive,
   MessageSquare,
   Timer,
-  FolderArchive,
   ArrowRight,
   Mail,
   Loader2,
@@ -20,124 +18,142 @@ import {
 import { signInWithMagicLink, signInWithGoogle, getAllowedDomain } from "@/lib/auth";
 
 // ============================================
-// FEATURE DATA
+// FEATURES DATA
 // ============================================
 const features = [
   {
     icon: BookOpen,
-    title: "All courses, structured",
-    description: "Every branch, every semester — find your courses instantly.",
+    title: "Structured courses",
+    description: "Every branch, every semester — organised and accessible.",
   },
   {
     icon: FolderArchive,
-    title: "Resources that matter",
-    description: "PYQs, lecture notes, and senior archives. No hunting required.",
+    title: "Resources archive",
+    description: "PYQs, lecture notes, and materials shared by seniors.",
   },
   {
     icon: MessageSquare,
-    title: "Discussions that expire",
-    description: "Course communities with focused, ephemeral threads.",
+    title: "Focused discussions",
+    description: "Course communities with ephemeral, distraction-free threads.",
   },
   {
     icon: Timer,
-    title: "Your study toolkit",
-    description: "Focus timer, task tracking, and a clean calendar view.",
+    title: "Study toolkit",
+    description: "Focus timer, task tracking, and calendar view.",
   },
 ];
 
 // ============================================
-// MAIN LANDING PAGE
+// CURSOR GLOW HOOK (DESKTOP ONLY)
+// ============================================
+function useCursorGlow() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isEnabled, setIsEnabled] = useState(false);
+
+  useEffect(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setIsEnabled(!isTouch && !prefersReducedMotion);
+
+    if (isTouch || prefersReducedMotion) return;
+
+    let rafId: number;
+    const handleMove = (e: MouseEvent) => {
+      rafId = requestAnimationFrame(() => {
+        setPosition({ x: e.clientX, y: e.clientY });
+      });
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  return { ...position, isEnabled };
+}
+
+// ============================================
+// MAIN PAGE
 // ============================================
 export default function HomePage() {
   const [showAuth, setShowAuth] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const authSectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setPrefersReducedMotion(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
-  }, []);
+  const authRef = useRef<HTMLDivElement>(null);
+  const { x, y, isEnabled: cursorEnabled } = useCursorGlow();
 
   const handleGetStarted = useCallback(() => {
     setShowAuth(true);
     setTimeout(() => {
-      authSectionRef.current?.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "center",
-      });
-    }, 100);
-  }, [prefersReducedMotion]);
+      authRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-slate-50/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
-              <GraduationCap className="h-5 w-5 text-white dark:text-slate-900" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                StudyWindow
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                IIT Roorkee
-              </span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[hsl(0,0%,99%)] text-[hsl(0,0%,9%)] dark:bg-[hsl(0,0%,7%)] dark:text-[hsl(0,0%,95%)]">
+      {/* Cursor Glow - Nearly invisible */}
+      {cursorEnabled && (
+        <div
+          className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(600px circle at ${x}px ${y}px, rgba(128,128,128,0.04), transparent 40%)`,
+          }}
+        />
+      )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 border-b border-[hsl(0,0%,92%)] bg-[hsl(0,0%,99%)]/80 backdrop-blur-md dark:border-[hsl(0,0%,18%)] dark:bg-[hsl(0,0%,7%)]/80">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold tracking-tight">StudyWindow</span>
+            <span className="text-xs font-medium text-[hsl(0,0%,45%)] dark:text-[hsl(0,0%,55%)]">
+              IITR
+            </span>
+          </div>
+          <button
             onClick={handleGetStarted}
+            className="text-sm font-medium text-[hsl(0,0%,45%)] transition-colors hover:text-[hsl(0,0%,9%)] dark:text-[hsl(0,0%,55%)] dark:hover:text-[hsl(0,0%,95%)]"
           >
-            Sign In
-          </Button>
+            Sign in
+          </button>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="mx-auto max-w-5xl px-6 py-20 lg:py-28">
-        <div className="max-w-2xl">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl dark:text-white">
-            Your academic workspace at IIT Roorkee
-          </h1>
-          <p className="mt-6 text-lg leading-relaxed text-slate-600 dark:text-slate-400">
-            Courses, resources, and focused discussions — organised semester-wise, distraction-free.
-          </p>
-          <div className="mt-10">
-            <Button
-              size="lg"
-              className="gap-2 bg-slate-900 px-6 py-6 text-base hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-              onClick={handleGetStarted}
-            >
-              Get Started
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* Hero */}
+      <section className="mx-auto max-w-4xl px-6 pb-20 pt-24 lg:pt-32">
+        <h1 className="text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.1] tracking-tight">
+          Your academic workspace
+          <br />
+          <span className="text-[hsl(0,0%,45%)] dark:text-[hsl(0,0%,55%)]">at IIT Roorkee</span>
+        </h1>
+        <p className="mt-6 max-w-lg text-lg leading-relaxed text-[hsl(0,0%,45%)] dark:text-[hsl(0,0%,55%)]">
+          Courses, resources, and focused discussions — organised semester-wise, distraction-free.
+        </p>
+        <div className="mt-10">
+          <Button
+            size="lg"
+            onClick={handleGetStarted}
+            className="gap-2 rounded-full bg-[hsl(0,0%,9%)] px-6 py-6 text-sm font-medium text-white transition-all hover:scale-[1.02] hover:bg-[hsl(0,0%,15%)] dark:bg-[hsl(0,0%,95%)] dark:text-[hsl(0,0%,9%)] dark:hover:bg-[hsl(0,0%,85%)]"
+          >
+            Get Started
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="border-t border-slate-200 bg-white py-16 dark:border-slate-800 dark:bg-slate-900/50">
-        <div className="mx-auto max-w-5xl px-6">
+      {/* Features */}
+      <section className="border-y border-[hsl(0,0%,92%)] bg-[hsl(0,0%,97%)] py-16 dark:border-[hsl(0,0%,18%)] dark:bg-[hsl(0,0%,9%)]">
+        <div className="mx-auto max-w-4xl px-6">
           <div className="grid gap-8 sm:grid-cols-2">
-            {features.map((feature) => (
-              <div key={feature.title} className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-                  <feature.icon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            {features.map((f) => (
+              <div key={f.title} className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[hsl(0,0%,90%)] bg-white dark:border-[hsl(0,0%,20%)] dark:bg-[hsl(0,0%,12%)]">
+                  <f.icon className="h-5 w-5 text-[hsl(0,0%,45%)] dark:text-[hsl(0,0%,55%)]" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-slate-900 dark:text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    {feature.description}
+                  <h3 className="font-medium">{f.title}</h3>
+                  <p className="mt-1 text-sm text-[hsl(0,0%,45%)] dark:text-[hsl(0,0%,55%)]">
+                    {f.description}
                   </p>
                 </div>
               </div>
@@ -147,42 +163,35 @@ export default function HomePage() {
       </section>
 
       {/* Trust Strip */}
-      <section className="border-t border-slate-200 py-8 dark:border-slate-800">
-        <div className="mx-auto max-w-5xl px-6">
-          <p className="text-center text-sm text-slate-500">
-            IIT Roorkee emails only • No ads • No tracking • Built for academic focus
-          </p>
-        </div>
+      <section className="py-8">
+        <p className="text-center text-sm text-[hsl(0,0%,50%)]">
+          IIT emails only&nbsp;&nbsp;•&nbsp;&nbsp;No ads&nbsp;&nbsp;•&nbsp;&nbsp;Built for academic focus
+        </p>
       </section>
 
-      {/* Auth Section (Revealed on CTA click) */}
+      {/* Auth Section */}
       <section
-        ref={authSectionRef}
-        className={`border-t border-slate-200 bg-slate-50 py-16 dark:border-slate-800 dark:bg-slate-950 ${showAuth
-            ? "opacity-100"
-            : "pointer-events-none max-h-0 overflow-hidden opacity-0"
-          } ${prefersReducedMotion ? "" : "transition-all duration-500"}`}
-        aria-hidden={!showAuth}
+        ref={authRef}
+        className={`border-t border-[hsl(0,0%,92%)] bg-[hsl(0,0%,97%)] py-16 transition-all duration-500 dark:border-[hsl(0,0%,18%)] dark:bg-[hsl(0,0%,9%)] ${showAuth ? "opacity-100" : "pointer-events-none max-h-0 overflow-hidden opacity-0 py-0"
+          }`}
       >
-        <div className="mx-auto max-w-md px-6">
+        <div className="mx-auto max-w-sm px-6">
           <AuthCard />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-8 dark:border-slate-800">
-        <div className="mx-auto max-w-5xl px-6 text-center">
-          <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} StudyWindow. Built for IIT Roorkee students.
-          </p>
-        </div>
+      <footer className="border-t border-[hsl(0,0%,92%)] py-8 dark:border-[hsl(0,0%,18%)]">
+        <p className="text-center text-xs text-[hsl(0,0%,50%)]">
+          © {new Date().getFullYear()} StudyWindow. Built for IIT Roorkee.
+        </p>
       </footer>
     </div>
   );
 }
 
 // ============================================
-// AUTH CARD COMPONENT
+// AUTH CARD
 // ============================================
 function AuthCard() {
   const [email, setEmail] = useState("");
@@ -190,14 +199,23 @@ function AuthCard() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const domain = getAllowedDomain();
 
-  const allowedDomain = getAllowedDomain();
+  const handleGoogle = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError((e as Error).message);
+      setIsGoogleLoading(false);
+    }
+  };
 
-  const handleMagicLinkLogin = async (e: React.FormEvent) => {
+  const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
     try {
       await signInWithMagicLink(email);
       setSuccess(true);
@@ -208,133 +226,89 @@ function AuthCard() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    setError(null);
-
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setError((err as Error).message);
-      setIsGoogleLoading(false);
-    }
-  };
-
   if (success) {
     return (
-      <Card className="border-slate-200 shadow-sm dark:border-slate-800">
-        <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+      <Card className="border-[hsl(0,0%,90%)] bg-white shadow-sm dark:border-[hsl(0,0%,20%)] dark:bg-[hsl(0,0%,10%)]">
+        <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <div>
+            <p className="font-medium">Check your email</p>
+            <p className="mt-1 text-sm text-[hsl(0,0%,45%)]">
+              We sent a sign-in link to <strong>{email}</strong>
+            </p>
           </div>
-          <h2 className="text-lg font-medium text-slate-900 dark:text-white">
-            Check your email
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            We&apos;ve sent a sign-in link to{" "}
-            <strong className="text-slate-900 dark:text-white">{email}</strong>
-          </p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="border-slate-200 shadow-sm dark:border-slate-800">
+    <Card className="border-[hsl(0,0%,90%)] bg-white shadow-sm dark:border-[hsl(0,0%,20%)] dark:bg-[hsl(0,0%,10%)]">
       <CardContent className="p-6">
-        <div className="mb-6 text-center">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            Ready to start?
-          </h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Sign in to access your workspace
-          </p>
-        </div>
+        <h2 className="text-center text-lg font-medium">Ready to begin?</h2>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              Something went wrong. Please try again.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">{error}</p>
+          <div className="mt-4 rounded-lg border border-[hsl(0,0%,88%)] bg-[hsl(0,0%,96%)] p-3 text-sm text-[hsl(0,0%,35%)] dark:border-[hsl(0,0%,22%)] dark:bg-[hsl(0,0%,12%)]">
+            {error}
           </div>
         )}
 
-        <div className="space-y-4">
-          {/* Google OAuth */}
+        <div className="mt-6 space-y-4">
+          {/* Google */}
           <Button
             type="button"
-            className="w-full gap-3 bg-white py-5 text-slate-700 shadow-sm hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            onClick={handleGoogleLogin}
+            onClick={handleGoogle}
             disabled={isGoogleLoading}
+            className="w-full gap-3 rounded-lg border border-[hsl(0,0%,88%)] bg-white py-5 text-sm font-medium text-[hsl(0,0%,15%)] shadow-none transition-colors hover:bg-[hsl(0,0%,96%)] dark:border-[hsl(0,0%,22%)] dark:bg-[hsl(0,0%,12%)] dark:text-[hsl(0,0%,90%)] dark:hover:bg-[hsl(0,0%,15%)]"
           >
             {isGoogleLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Signing in...</span>
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </>
+              <svg className="h-4 w-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
             )}
+            Continue with Google
           </Button>
 
-          <p className="text-center text-xs text-slate-500">
+          <p className="text-center text-xs text-[hsl(0,0%,50%)]">
             We only access your email for authentication.
           </p>
 
           {/* Separator */}
-          <div className="relative py-2">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-slate-400 dark:bg-slate-900">
-              or
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-[hsl(0,0%,90%)] dark:bg-[hsl(0,0%,20%)]" />
+            <span className="text-xs text-[hsl(0,0%,50%)]">or</span>
+            <div className="h-px flex-1 bg-[hsl(0,0%,90%)] dark:bg-[hsl(0,0%,20%)]" />
           </div>
 
-          {/* Magic Link Form */}
-          <form onSubmit={handleMagicLinkLogin} className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm text-slate-700 dark:text-slate-300">
-                Institute Email
+          {/* Magic Link */}
+          <form onSubmit={handleMagicLink} className="space-y-3">
+            <div>
+              <Label htmlFor="email" className="text-xs font-medium text-[hsl(0,0%,40%)]">
+                Institute email
               </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(0,0%,55%)]" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder={`yourname${allowedDomain}`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  placeholder={`you${domain}`}
                   required
+                  className="pl-10"
                 />
               </div>
             </div>
-
             <Button
               type="submit"
-              variant="outline"
-              className="w-full py-5"
               disabled={isLoading}
+              variant="outline"
+              className="w-full py-5 text-sm"
             >
               {isLoading ? (
                 <>
@@ -342,16 +316,13 @@ function AuthCard() {
                   Sending...
                 </>
               ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send sign-in link
-                </>
+                "Send sign-in link"
               )}
             </Button>
           </form>
 
-          <p className="pt-2 text-center text-xs text-slate-400">
-            Only <strong>{allowedDomain}</strong> emails are supported.
+          <p className="pt-2 text-center text-xs text-[hsl(0,0%,50%)]">
+            Only <span className="font-medium">{domain}</span> emails supported.
           </p>
         </div>
       </CardContent>
