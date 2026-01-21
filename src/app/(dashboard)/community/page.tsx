@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useCommunityStore } from "@/stores/community-store";
+import { useUserStore } from "@/stores/user-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +43,9 @@ export default function CommunityPage() {
         .sort((a, b) => b.upvotesCount - a.upvotesCount)
         .slice(0, 5);
 
-    const unreadCount = getUnreadCount('demo-user-123');
+    const { profile } = useUserStore();
+
+    const unreadCount = profile?.id ? getUnreadCount(profile.id) : 0;
 
     return (
         <div className="p-4 lg:p-8">
