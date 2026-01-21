@@ -16,13 +16,17 @@ export async function GET(request: Request) {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const allowedDomain = process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "@abc.iit.ac.in";
+      const allowedDomainSuffix = (process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || "iitr.ac.in").replace(/^@/, "").toLowerCase();
 
-      if (user && !user.email?.toLowerCase().endsWith(allowedDomain.toLowerCase())) {
+      // Check if email ends with the domain suffix (supports subdomains like ee.iitr.ac.in)
+      const userEmail = user?.email?.toLowerCase() || "";
+      const isAllowed = userEmail.endsWith(allowedDomainSuffix) || userEmail.endsWith(`.${allowedDomainSuffix}`);
+
+      if (user && !isAllowed) {
         // Sign out the user if email domain is not allowed
         await supabase.auth.signOut();
         return NextResponse.redirect(
-          `${origin}/login?error=Only ${allowedDomain} emails are allowed`
+          `${origin}/login?error=Only @${allowedDomainSuffix} emails are allowed`
         );
       }
 
