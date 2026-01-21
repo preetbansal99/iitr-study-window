@@ -61,6 +61,10 @@ interface UserState {
     // All usernames in the system (for uniqueness check in mock mode)
     allUsernames: string[];
 
+    // Demo mode role override (DEMO MODE ONLY)
+    // This does NOT affect real role logic, only UI display
+    demoRole: 'ADMIN' | 'STUDENT' | null;
+
     // Actions
     initializeUser: (email: string, id?: string) => void;
     updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
@@ -69,6 +73,7 @@ interface UserState {
     checkUsernameAvailable: (username: string) => boolean;
     isOnboardingRequired: () => boolean;
     clearProfile: () => void;
+    setDemoRole: (role: 'ADMIN' | 'STUDENT' | null) => void;
 }
 
 // Demo users for uniqueness testing
@@ -86,6 +91,12 @@ export const useUserStore = create<UserState>()(
             isLoading: false,
             error: null,
             allUsernames: [...DEMO_USERNAMES],
+            demoRole: null,
+
+            // Demo mode role override setter
+            setDemoRole: (role: 'ADMIN' | 'STUDENT' | null) => {
+                set({ demoRole: role });
+            },
 
             initializeUser: (email: string, id?: string) => {
                 const existingProfile = get().profile;

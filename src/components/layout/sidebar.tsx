@@ -13,14 +13,25 @@ import {
   GraduationCap,
   MessageSquare,
   Shield,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/stores/user-store";
-import { isAdmin } from "@/lib/permissions";
+import { isAdmin, getUserRole } from "@/lib/permissions";
+
+// Check if running in demo mode (no Supabase credentials)
+const IS_DEMO_MODE = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const navItems = [
   {
@@ -58,8 +69,12 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile } = useUserStore();
-  const userIsAdmin = isAdmin(profile?.email);
+  const { profile, demoRole, setDemoRole } = useUserStore();
+
+  // Effective role logic: demoRole overrides real role (DEMO MODE ONLY)
+  const realRole = getUserRole(profile?.email);
+  const effectiveRole = IS_DEMO_MODE && demoRole ? demoRole : realRole;
+  const userIsAdmin = effectiveRole === 'ADMIN';
 
   const handleSignOut = async () => {
     await signOut();
@@ -112,6 +127,31 @@ export function Sidebar() {
 
       {/* User section with Admin badge */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4 dark:border-slate-800 space-y-3">
+        {/* Demo Mode Role Switcher - ONLY visible in demo mode */}
+        {IS_DEMO_MODE && (
+          <div className="space-y-2 rounded-lg border border-dashed border-purple-300 bg-purple-50 p-3 dark:border-purple-700 dark:bg-purple-950">
+            <div className="flex items-center justify-center gap-1">
+              <FlaskConical className="h-3 w-3 text-purple-600" />
+              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                Demo Mode
+              </span>
+            </div>
+            <Select
+              value={demoRole || "auto"}
+              onValueChange={(v) => setDemoRole(v === "auto" ? null : v as 'ADMIN' | 'STUDENT')}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Demo Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto ({realRole})</SelectItem>
+                <SelectItem value="ADMIN">👑 Admin</SelectItem>
+                <SelectItem value="STUDENT">🎓 Student</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Admin Badge - only visible for admin users */}
         {userIsAdmin && (
           <div className="flex items-center justify-center">
