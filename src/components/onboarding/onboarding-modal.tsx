@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
     Dialog,
     DialogContent,
@@ -12,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUserStore } from "@/stores/user-store";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -37,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function OnboardingModal() {
+    const router = useRouter();
     const {
         profile,
         initializeUser,
@@ -65,6 +68,7 @@ export function OnboardingModal() {
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [usernameValid, setUsernameValid] = useState(false);
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);  // User confirmation
 
     // Initialize user and extract identity from Google
     useEffect(() => {
@@ -158,7 +162,7 @@ export function OnboardingModal() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!usernameValid || !enrollmentNumber || enrollmentError) {
+        if (!usernameValid || !enrollmentNumber || enrollmentError || !confirmed) {
             return;
         }
 
@@ -172,30 +176,74 @@ export function OnboardingModal() {
 
         const semesterInfo = deriveSemester(parsed.enrollmentYear);
         const branchCode = parsed.branchCode || getBranchCodeFromEmail(email || "");
+        const derivedBranchName = getBranchName(parsed.branchCode) || getBranchFromEmail(email || "");
 
-        const result = await updateProfile({
+        // Prepare identity data for Supabase
+        const identityData = {
             username: normalizeUsername(username),
-            fullName: fullName,
-            enrollmentNumber: enrollmentNumber,
-            enrollmentYear: parsed.enrollmentYear,
-            branchCode: branchCode,
-            branchName: getBranchName(parsed.branchCode) || getBranchFromEmail(email || ""),
-            rollNumber: parsed.rollNumber,
-            currentAcademicYear: semesterInfo.academicYear,
-            currentSemester: semesterInfo.semester,
-            identityLocked: true, // Lock identity after first save
-        });
+            full_name: fullName,
+            enrollment_number: enrollmentNumber,
+            enrollment_year: parsed.enrollmentYear,
+            branch_code: branchCode,
+            branch_name: derivedBranchName,
+            roll_number: parsed.rollNumber,
+            current_academic_year: semesterInfo.academicYear,
+            current_semester: semesterInfo.semester,
+            identity_locked: true, // Lock identity after this save
+        };
 
-        if (result.success) {
+        try {
+            // Atomic write to Supabase
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                setUsernameError("Not authenticated. Please refresh and try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const { error: dbError } = await supabase
+                .from('users')
+                .update(identityData)
+                .eq('id', user.id);
+
+            if (dbError) {
+                console.error('Failed to save identity:', dbError);
+                setUsernameError(`Failed to save: ${dbError.message}. Please try again.`);
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Update local store after successful DB write
+            await updateProfile({
+                username: normalizeUsername(username),
+                fullName: fullName,
+                enrollmentNumber: enrollmentNumber,
+                enrollmentYear: parsed.enrollmentYear,
+                branchCode: branchCode,
+                branchName: derivedBranchName,
+                rollNumber: parsed.rollNumber,
+                currentAcademicYear: semesterInfo.academicYear,
+                currentSemester: semesterInfo.semester,
+                identityLocked: true,
+            });
+
             setIsSuccess(true);
+
+            // Step 6: Navigate to resources based on derived branch and semester
+            const branchSlug = derivedBranchName?.toLowerCase().split(' ')[0] || 'ee';
             setTimeout(() => {
                 setIsOpen(false);
+                // Navigate to: Dashboard → Resources → Branch → Semester
+                router.push(`/resources/${branchSlug}/semester/${semesterInfo.semester}`);
             }, 1500);
-        } else {
-            setUsernameError(result.error || "Failed to save profile");
+        } catch (err) {
+            console.error('Identity save error:', err);
+            setUsernameError('An unexpected error occurred. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setIsSubmitting(false);
     };
 
     // Don't render if no profile
@@ -347,11 +395,32 @@ export function OnboardingModal() {
                                 )}
                             </div>
 
+                            {/* Confirmation Checkbox */}
+                            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                                <Checkbox
+                                    id="confirm"
+                                    checked={confirmed}
+                                    onCheckedChange={(checked) => setConfirmed(checked === true)}
+                                    className="mt-0.5"
+                                />
+                                <div className="grid gap-1.5 leading-none">
+                                    <Label
+                                        htmlFor="confirm"
+                                        className="text-sm font-medium text-amber-800 dark:text-amber-200"
+                                    >
+                                        I confirm these details are correct
+                                    </Label>
+                                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                                        Academic identity cannot be changed after setup.
+                                    </p>
+                                </div>
+                            </div>
+
                             <DialogFooter>
                                 <Button
                                     type="submit"
                                     className="w-full"
-                                    disabled={isSubmitting || !usernameValid || !enrollmentNumber || !!enrollmentError}
+                                    disabled={isSubmitting || !usernameValid || !enrollmentNumber || !!enrollmentError || !confirmed}
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -363,10 +432,6 @@ export function OnboardingModal() {
                                     )}
                                 </Button>
                             </DialogFooter>
-
-                            <p className="text-center text-xs text-slate-400">
-                                Academic identity fields cannot be changed after setup.
-                            </p>
                         </form>
                     </>
                 )}

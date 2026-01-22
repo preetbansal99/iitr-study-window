@@ -84,6 +84,7 @@ interface UserState {
     skipOnboarding: () => void;
     checkUsernameAvailable: (username: string) => boolean;
     isOnboardingRequired: () => boolean;
+    isIdentityRequired: () => boolean;  // NEW: identity setup needed
     clearProfile: () => void;
     setDemoRole: (role: 'ADMIN' | 'STUDENT' | null) => void;
 }
@@ -277,8 +278,21 @@ export const useUserStore = create<UserState>()(
                 const { profile } = get();
                 if (!profile) return false;
 
-                // Onboarding required if username is null and not skipped
-                return profile.username === null && !profile.onboardingSkipped;
+                // Onboarding required if:
+                // 1. Username is null and not skipped, OR
+                // 2. Identity is not locked and enrollment is missing
+                const needsUsername = profile.username === null && !profile.onboardingSkipped;
+                const needsIdentity = !profile.identityLocked && profile.enrollmentNumber === null;
+
+                return needsUsername || needsIdentity;
+            },
+
+            isIdentityRequired: () => {
+                const { profile } = get();
+                if (!profile) return false;
+
+                // Identity required if NOT locked AND enrollment is missing
+                return !profile.identityLocked && profile.enrollmentNumber === null;
             },
 
             clearProfile: () => {
