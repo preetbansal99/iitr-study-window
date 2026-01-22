@@ -183,6 +183,7 @@ export function OnboardingModal() {
         }
 
         setIsSubmitting(true);
+        setUsernameError(null);
 
         const parsed = parseEnrollmentNumber(enrollmentNumber);
         if (!parsed) {
@@ -194,22 +195,7 @@ export function OnboardingModal() {
         const branchCode = parsed.branchCode || getBranchCodeFromEmail(email || "");
         const derivedBranchName = getBranchName(parsed.branchCode) || getBranchFromEmail(email || "");
 
-        // Prepare identity data for Supabase
-        const identityData = {
-            username: normalizeUsername(username),
-            full_name: fullName,
-            enrollment_number: enrollmentNumber,
-            enrollment_year: parsed.enrollmentYear,
-            branch_code: branchCode,
-            branch_name: derivedBranchName,
-            roll_number: parsed.rollNumber,
-            current_academic_year: semesterInfo.academicYear,
-            current_semester: semesterInfo.semester,
-            identity_locked: true, // Lock identity after this save
-        };
-
         try {
-            // Atomic write to Supabase
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -219,19 +205,69 @@ export function OnboardingModal() {
                 return;
             }
 
-            const { error: dbError } = await supabase
+            // Check if identity is already locked (prevents re-sending identity fields)
+            const { data: existingUser } = await supabase
                 .from('users')
-                .update(identityData)
-                .eq('id', user.id);
+                .select('identity_locked')
+                .eq('id', user.id)
+                .single();
 
-            if (dbError) {
-                console.error('Failed to save identity:', dbError);
-                setUsernameError(`Failed to save: ${dbError.message}. Please try again.`);
-                setIsSubmitting(false);
-                return;
+            const isIdentityLocked = existingUser?.identity_locked === true;
+
+            // ================================
+            // WRITE PATH 1: Identity (One-Time)
+            // ================================
+            if (!isIdentityLocked) {
+                const identityPayload = {
+                    full_name: fullName,
+                    enrollment_number: enrollmentNumber,
+                    enrollment_year: parsed.enrollmentYear,
+                    branch_code: branchCode,
+                    branch_name: derivedBranchName,
+                    roll_number: parsed.rollNumber,
+                    current_academic_year: semesterInfo.academicYear,
+                    current_semester: semesterInfo.semester,
+                    identity_locked: true,
+                };
+
+                const { error: identityError } = await supabase
+                    .from('users')
+                    .update(identityPayload)
+                    .eq('id', user.id);
+
+                if (identityError) {
+                    console.error('Failed to save identity:', identityError);
+                    setUsernameError('Failed to confirm identity. Please try again.');
+                    setIsSubmitting(false);
+                    return;
+                }
             }
 
-            // Update local store after successful DB write
+            // ================================
+            // WRITE PATH 2: Username (Separate)
+            // ================================
+            const usernamePayload = {
+                username: normalizeUsername(username),
+            };
+
+            const { error: usernameError } = await supabase
+                .from('users')
+                .update(usernamePayload)
+                .eq('id', user.id);
+
+            if (usernameError) {
+                console.error('Failed to save username:', usernameError);
+                // Non-blocking: show warning but continue if identity was saved
+                if (isIdentityLocked) {
+                    setUsernameError('Username could not be saved. You can update it later in Settings.');
+                } else {
+                    setUsernameError('Failed to save username. Please try again.');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            // Update local store with all values
             await updateProfile({
                 username: normalizeUsername(username),
                 fullName: fullName,
@@ -247,11 +283,10 @@ export function OnboardingModal() {
 
             setIsSuccess(true);
 
-            // Step 6: Navigate to resources based on derived branch and semester
+            // Navigate to resources based on derived branch and semester
             const branchSlug = derivedBranchName?.toLowerCase().split(' ')[0] || 'ee';
             setTimeout(() => {
                 setIsOpen(false);
-                // Navigate to: Dashboard → Resources → Branch → Semester
                 router.push(`/resources/${branchSlug}/semester/${semesterInfo.semester}`);
             }, 1500);
         } catch (err) {
@@ -347,26 +382,31 @@ export function OnboardingModal() {
                                 </div>
                             </div>
 
-                            {/* Enrollment Number Input */}
+                            {/* Enrollment Number (Read-Only, Auto-Filled) */}
                             <div className="space-y-2">
-                                <Label htmlFor="enrollment" className="flex items-center gap-1">
-                                    Enrollment Number <span className="text-red-500">*</span>
+                                <Label className="flex items-center gap-1">
+                                    <Lock className="h-3.5 w-3.5" />
+                                    Enrollment Number
                                 </Label>
-                                <Input
-                                    id="enrollment"
-                                    value={enrollmentNumber}
-                                    onChange={(e) => setEnrollmentNumber(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                                    placeholder="e.g., 25115109"
-                                    className={cn(
-                                        enrollmentError && "border-red-500 focus-visible:ring-red-500"
+                                <div className="flex items-center justify-between rounded-md border bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
+                                    <span className={cn(
+                                        "font-mono",
+                                        enrollmentNumber ? "text-slate-900 dark:text-white" : "text-slate-400"
+                                    )}>
+                                        {enrollmentNumber || "Not detected"}
+                                    </span>
+                                    {enrollmentNumber && !enrollmentError && (
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                                     )}
-                                    maxLength={8}
-                                />
+                                    {enrollmentError && (
+                                        <AlertCircle className="h-4 w-4 text-red-500" />
+                                    )}
+                                </div>
                                 {enrollmentError ? (
                                     <p className="text-xs text-red-500">{enrollmentError}</p>
                                 ) : (
                                     <p className="text-xs text-slate-500">
-                                        8 digits: YY (year) + BBB (branch) + XXX (roll)
+                                        Auto-extracted from your profile
                                     </p>
                                 )}
                             </div>
