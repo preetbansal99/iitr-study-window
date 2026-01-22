@@ -249,7 +249,6 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             tags: threadData.tags,
             created_by: user.user?.id || 'anonymous',
             is_anonymous: threadData.isAnonymous,
-            // Assuming default timestamps and counts in DB
         };
 
         const { data, error } = await supabase
@@ -263,20 +262,31 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             return null;
         }
 
+        // Map snake_case to camelCase for consistency
         const mappedThread = {
             ...data,
             channelId: data.channel_id,
+            createdBy: data.created_by,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
-            lastActivityAt: data.last_activity_at,
-            upvotesCount: data.upvotes_count,
-            replyCount: data.reply_count,
-            isPinned: data.is_pinned
+            lastActivityAt: data.last_activity_at || data.created_at,
+            upvotesCount: data.upvotes_count || 0,
+            replyCount: data.reply_count || 0,
+            isPinned: data.is_pinned || false,
+            isAnonymous: data.is_anonymous || false,
         };
 
+        // Optimistic update: prepend to threads array
         set(state => ({
             threads: [mappedThread, ...state.threads]
         }));
+
+        // Refetch to ensure consistency and visibility for all users
+        // This ensures DB-generated fields are synced and RLS is respected
+        setTimeout(() => {
+            get().fetchThreads(threadData.channelId);
+        }, 100);
+
         return mappedThread;
     },
 

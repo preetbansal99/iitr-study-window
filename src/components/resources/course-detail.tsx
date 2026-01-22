@@ -50,6 +50,7 @@ import {
     Save,
     X,
     Upload,
+    FileQuestion,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Course, Chapter } from "@/lib/curriculumData";
@@ -58,6 +59,7 @@ import { useUserStore } from "@/stores/user-store";
 import { useCourseStore, type CourseResource } from "@/stores/course-store";
 import { isAdmin, canPostInChannel } from "@/lib/permissions";
 import type { Thread, ThreadTag } from "@/lib/community/types";
+import { RequestResourceModal } from "./request-modal";
 
 // Mock resources removed - now fetching from Supabase
 
@@ -116,6 +118,9 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
     const [newThreadBody, setNewThreadBody] = useState('');
     const [newThreadTag, setNewThreadTag] = useState<ThreadTag>('Doubt');
     const [isCreatingThread, setIsCreatingThread] = useState(false);
+
+    // Request modal state
+    const [requestModalOpen, setRequestModalOpen] = useState(false);
 
     // Admin editing states
     const [isEditingOverview, setIsEditingOverview] = useState(false);
@@ -298,7 +303,7 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
                     <ChevronLeft className="h-4 w-4" />
                     Back
                 </Button>
-                <div>
+                <div className="flex-1">
                     <Badge className="mb-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
                         {course.code}
                     </Badge>
@@ -307,6 +312,16 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
                     </h2>
                     <p className="text-sm text-slate-500">{course.credits} Credits</p>
                 </div>
+                {/* Request Resource Button */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRequestModalOpen(true)}
+                    className="gap-2"
+                >
+                    <FileQuestion className="h-4 w-4" />
+                    Request
+                </Button>
             </div>
 
             {/* Top-Level Tabs: Overview | Resources | Community */}
@@ -1202,6 +1217,14 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Request Resource Modal */}
+            <RequestResourceModal
+                isOpen={requestModalOpen}
+                onClose={() => setRequestModalOpen(false)}
+                courseCode={course.code}
+                courseName={course.title}
+            />
         </div>
     );
 }
