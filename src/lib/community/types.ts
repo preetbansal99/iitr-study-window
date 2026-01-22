@@ -208,7 +208,7 @@ export interface ApiResponse<T> {
 }
 
 // ============================================
-// DEMO USER FOR COMMUNITY
+// COMMUNITY USER
 // ============================================
 export interface CommunityUser {
     id: string;

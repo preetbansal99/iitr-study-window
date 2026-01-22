@@ -29,7 +29,7 @@ export default function CommunityPage() {
         getUnreadCount,
     } = useCommunityStore();
 
-    // Initialize with demo data
+    // Initialize community store
     useEffect(() => {
         initialize();
     }, [initialize]);

@@ -79,11 +79,10 @@ export default function BranchCommunityPage() {
     // Check if current user is admin
     const userEmail = profile?.email || null;
     const userIsAdmin = isAdmin(userEmail);
-    const userId = profile?.id || "demo-user-123";
+    const userId = profile?.id || null; // Null if not authenticated
     const ctx = { userEmail, userId };
 
-    // Get or create branch channel (for demo, use general channel)
-    // In production, would have proper branch channels
+    // Get branch channel
     const branchChannel = channels.find(c => c.branchCode === branch) || channels.find(c => c.id === 'channel-general');
     const channelId = branchChannel?.id || 'channel-general';
     const postingPolicy = branchChannel?.postingPolicy || 'STUDENT_ALLOWED';
@@ -116,10 +115,14 @@ export default function BranchCommunityPage() {
     // Handle thread creation
     const handleCreateThread = async () => {
         if (!newTitle.trim() || !newBody.trim()) return;
+        if (!userId) {
+            console.error('User not authenticated');
+            return;
+        }
         setIsSubmitting(true);
 
         try {
-            await createThread({
+            const result = await createThread({
                 channelId,
                 title: newTitle.trim(),
                 body: newBody.trim(),
@@ -128,10 +131,16 @@ export default function BranchCommunityPage() {
                 isAnonymous,
             });
 
-            setNewTitle("");
-            setNewBody("");
-            setIsAnonymous(false);
-            setShowCreateDialog(false);
+            if (result) {
+                setNewTitle("");
+                setNewBody("");
+                setIsAnonymous(false);
+                setShowCreateDialog(false);
+            } else {
+                console.error('Failed to create thread - check RLS policies');
+            }
+        } catch (error) {
+            console.error('Error creating thread:', error);
         } finally {
             setIsSubmitting(false);
         }
@@ -275,7 +284,7 @@ export default function BranchCommunityPage() {
                 {channelThreads.map((thread) => {
                     const author = thread.createdBy ? getUser(thread.createdBy) : null;
                     const authorName = thread.isAnonymous ? "Anonymous" : (author?.username || "Unknown");
-                    const isUpvoted = hasUpvoted(thread.id, 'thread', userId);
+                    const isUpvoted = userId ? hasUpvoted(thread.id, 'thread', userId) : false;
 
                     return (
                         <Card
@@ -292,12 +301,13 @@ export default function BranchCommunityPage() {
                                         className={`flex flex-col h-auto py-2 ${isUpvoted ? 'text-indigo-600' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            toggleUpvote(thread.id, 'thread', userId);
+                                            if (userId) toggleUpvote(thread.id, 'thread', userId);
                                         }}
                                     >
                                         <ThumbsUp className={`h-5 w-5 ${isUpvoted ? 'fill-current' : ''}`} />
                                         <span className="text-sm font-medium">{thread.upvotesCount}</span>
                                     </Button>
+
 
                                     {/* Thread content */}
                                     <div className="flex-1">
