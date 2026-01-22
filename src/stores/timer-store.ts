@@ -14,10 +14,12 @@ type BreakType = "short" | "long";
 export interface SessionRecord {
   id: string;
   date: string;
-  taskName: string | null;
+  taskId: string | null;      // Task UUID for linking
+  taskName: string | null;    // Display name (fallback)
   durationMinutes: number;
-  timestampEnd: number;
-  completed: boolean;
+  timestampStart: number;     // When session started
+  timestampEnd: number;       // When session ended
+  completed: boolean;         // true = completed, false = abandoned
 }
 
 interface TimerStore {
@@ -38,17 +40,18 @@ interface TimerStore {
 
   // Session tracking
   completedSessions: number;
-  linkedTaskName: string | null;
+  linkedTaskId: string | null;    // Task UUID
+  linkedTaskName: string | null;  // Display name
   sessionHistory: SessionRecord[];
 
   // Actions
-  startFocus: (taskName?: string) => void;
+  startFocus: (taskName?: string, taskId?: string) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   giveUp: () => void;
   tick: () => void;
   restoreState: () => void;
-  setLinkedTask: (taskName: string | null) => void;
+  setLinkedTask: (taskName: string | null, taskId?: string | null) => void;
   clearHistory: () => void;
   updateSettings: (settings: Partial<{
     focusDuration: number;
@@ -94,17 +97,19 @@ export const useTimerStore = create<TimerStore>()(
 
       // Session tracking
       completedSessions: 0,
+      linkedTaskId: null,
       linkedTaskName: null,
       sessionHistory: [],
 
       // Start a focus session
-      startFocus: (taskName?: string) => {
+      startFocus: (taskName?: string, taskId?: string) => {
         const { focusDuration } = get();
         set({
           timerState: "focus",
           timeRemaining: focusDuration * 60,
           lastTickAt: Date.now(),
           sessionStartedAt: Date.now(),
+          linkedTaskId: taskId || null,
           linkedTaskName: taskName || null,
         });
       },
@@ -128,7 +133,7 @@ export const useTimerStore = create<TimerStore>()(
       // Give up / reset to idle - save session if > 1 min
       giveUp: () => {
         const state = get();
-        const { focusDuration, sessionStartedAt, linkedTaskName, sessionHistory } = state;
+        const { focusDuration, sessionStartedAt, linkedTaskId, linkedTaskName, sessionHistory } = state;
 
         // Calculate how long they worked
         if (sessionStartedAt > 0) {
@@ -139,8 +144,10 @@ export const useTimerStore = create<TimerStore>()(
             const record: SessionRecord = {
               id: generateId(),
               date: new Date().toISOString().split("T")[0],
+              taskId: linkedTaskId,
               taskName: linkedTaskName,
               durationMinutes: elapsedMinutes,
+              timestampStart: sessionStartedAt,
               timestampEnd: Date.now(),
               completed: false, // abandoned
             };
@@ -153,13 +160,14 @@ export const useTimerStore = create<TimerStore>()(
           timeRemaining: focusDuration * 60,
           lastTickAt: 0,
           sessionStartedAt: 0,
+          linkedTaskId: null,
           linkedTaskName: null,
         });
       },
 
       // Set linked task
-      setLinkedTask: (taskName) => {
-        set({ linkedTaskName: taskName });
+      setLinkedTask: (taskName, taskId) => {
+        set({ linkedTaskName: taskName, linkedTaskId: taskId || null });
       },
 
       // Clear session history
@@ -183,8 +191,10 @@ export const useTimerStore = create<TimerStore>()(
             const record: SessionRecord = {
               id: generateId(),
               date: new Date().toISOString().split("T")[0],
+              taskId: state.linkedTaskId,
               taskName: state.linkedTaskName,
               durationMinutes: state.focusDuration,
+              timestampStart: state.sessionStartedAt,
               timestampEnd: Date.now(),
               completed: true,
             };
@@ -249,8 +259,10 @@ export const useTimerStore = create<TimerStore>()(
               const record: SessionRecord = {
                 id: generateId(),
                 date: new Date().toISOString().split("T")[0],
+                taskId: state.linkedTaskId,
                 taskName: state.linkedTaskName,
                 durationMinutes: state.focusDuration,
+                timestampStart: state.sessionStartedAt,
                 timestampEnd: Date.now(),
                 completed: true,
               };
@@ -314,6 +326,7 @@ export const useTimerStore = create<TimerStore>()(
         longBreakDuration: state.longBreakDuration,
         sessionsUntilLongBreak: state.sessionsUntilLongBreak,
         completedSessions: state.completedSessions,
+        linkedTaskId: state.linkedTaskId,
         linkedTaskName: state.linkedTaskName,
         sessionHistory: state.sessionHistory,
       }),
@@ -327,4 +340,43 @@ export function getTodayFocusTime(history: SessionRecord[]): number {
   return history
     .filter((s) => s.date === today && s.completed)
     .reduce((sum, s) => sum + s.durationMinutes, 0);
+}
+
+// Helper to get focus stats for a specific task
+export function getTaskFocusStats(history: SessionRecord[], taskId: string): {
+  totalMinutes: number;
+  sessionCount: number;
+  lastFocusedAt: string | null;
+} {
+  const taskSessions = history.filter((s) => s.taskId === taskId);
+  const totalMinutes = taskSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const sessionCount = taskSessions.length;
+  const lastSession = taskSessions[0]; // Most recent first
+
+  return {
+    totalMinutes,
+    sessionCount,
+    lastFocusedAt: lastSession ? new Date(lastSession.timestampEnd).toISOString() : null,
+  };
+}
+
+// Helper to get task productivity breakdown
+export function getTaskProductivity(history: SessionRecord[]): Array<{
+  taskId: string | null;
+  taskName: string | null;
+  totalMinutes: number;
+  sessionCount: number;
+}> {
+  const taskMap = new Map<string | null, { taskName: string | null; totalMinutes: number; sessionCount: number }>();
+
+  for (const session of history) {
+    const existing = taskMap.get(session.taskId) || { taskName: session.taskName, totalMinutes: 0, sessionCount: 0 };
+    existing.totalMinutes += session.durationMinutes;
+    existing.sessionCount += 1;
+    taskMap.set(session.taskId, existing);
+  }
+
+  return Array.from(taskMap.entries())
+    .map(([taskId, stats]) => ({ taskId, ...stats }))
+    .sort((a, b) => b.totalMinutes - a.totalMinutes);
 }

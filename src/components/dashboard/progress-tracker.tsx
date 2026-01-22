@@ -22,7 +22,7 @@ import {
     BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTimerStore } from "@/stores/timer-store";
+import { useTimerStore, getTaskProductivity } from "@/stores/timer-store";
 import { getStatsFromSessions, hasStudyData, type TimeRange } from "@/lib/analytics";
 
 export function ProgressTracker() {
@@ -37,6 +37,12 @@ export function ProgressTracker() {
 
     // Check if user has any study data
     const hasData = hasStudyData(sessionHistory);
+
+    // Get task productivity breakdown
+    const taskProductivity = useMemo(
+        () => getTaskProductivity(sessionHistory),
+        [sessionHistory]
+    );
 
     const timeRanges: { value: TimeRange; label: string }[] = [
         { value: "today", label: "Today" },
@@ -231,6 +237,37 @@ export function ProgressTracker() {
                                 <span>More</span>
                             </div>
                         </div>
+
+                        {/* Task Productivity Breakdown */}
+                        {taskProductivity.length > 0 && (
+                            <div className="rounded-lg border p-4">
+                                <h4 className="mb-3 font-semibold text-slate-900 dark:text-white">Focus by Task</h4>
+                                <div className="space-y-3">
+                                    {taskProductivity.slice(0, 5).map((task, i) => {
+                                        const maxMinutes = taskProductivity[0]?.totalMinutes || 1;
+                                        const percentage = (task.totalMinutes / maxMinutes) * 100;
+                                        return (
+                                            <div key={task.taskId || `general-${i}`} className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-700 dark:text-slate-300 truncate">
+                                                        {task.taskName || "General Focus"}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500">
+                                                        {Math.floor(task.totalMinutes / 60)}h {task.totalMinutes % 60}m ({task.sessionCount} sessions)
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+                                                        style={{ width: `${percentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </CardContent>
