@@ -196,9 +196,67 @@ export function isValidEnrollmentNumber(enrollment: string): boolean {
     return parseEnrollmentNumber(enrollment) !== null;
 }
 
+// ============================================
+// NAME PARSING (AUTO-EXTRACT ENROLLMENT)
+// ============================================
+
+export interface ParsedNameResult {
+    cleanName: string;           // Name without enrollment number
+    enrollmentFromName: string | null;  // Extracted enrollment number (if present)
+}
+
+/**
+ * Parse full name to extract enrollment number from suffix
+ * e.g., "PREET BANSAL 25115109" → { cleanName: "PREET BANSAL", enrollmentFromName: "25115109" }
+ */
+export function parseNameWithEnrollment(fullName: string): ParsedNameResult {
+    if (!fullName) {
+        return { cleanName: "", enrollmentFromName: null };
+    }
+
+    const trimmed = fullName.trim();
+    const tokens = trimmed.split(/\s+/);
+
+    if (tokens.length < 2) {
+        return { cleanName: trimmed, enrollmentFromName: null };
+    }
+
+    const lastToken = tokens[tokens.length - 1];
+
+    // Check if last token is an 8-digit enrollment number
+    if (/^\d{8}$/.test(lastToken)) {
+        // Validate it's a real enrollment (has valid branch code)
+        const parsed = parseEnrollmentNumber(lastToken);
+        if (parsed) {
+            // Remove the enrollment from name
+            const cleanName = tokens.slice(0, -1).join(" ");
+            return { cleanName, enrollmentFromName: lastToken };
+        }
+    }
+
+    // No enrollment found in name
+    return { cleanName: trimmed, enrollmentFromName: null };
+}
+
 /**
  * Extract full name from Google user metadata
+ * Automatically removes enrollment number if present at end
  */
 export function extractFullName(user: { user_metadata?: { full_name?: string; name?: string } }): string | null {
-    return user.user_metadata?.full_name || user.user_metadata?.name || null;
+    const rawName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+    if (!rawName) return null;
+
+    const { cleanName } = parseNameWithEnrollment(rawName);
+    return cleanName || null;
+}
+
+/**
+ * Extract enrollment number from Google name (if present as suffix)
+ */
+export function extractEnrollmentFromName(user: { user_metadata?: { full_name?: string; name?: string } }): string | null {
+    const rawName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+    if (!rawName) return null;
+
+    const { enrollmentFromName } = parseNameWithEnrollment(rawName);
+    return enrollmentFromName;
 }

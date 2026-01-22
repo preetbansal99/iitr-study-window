@@ -27,6 +27,7 @@ import {
     getBranchCodeFromEmail,
     deriveSemester,
     extractFullName,
+    extractEnrollmentFromName,
 } from "@/lib/academic-identity";
 import {
     Loader2,
@@ -66,6 +67,7 @@ export function OnboardingModal() {
 
     // Validation state
     const [usernameError, setUsernameError] = useState<string | null>(null);
+    const [usernameWarning, setUsernameWarning] = useState<string | null>(null); // Non-blocking
     const [usernameValid, setUsernameValid] = useState(false);
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
     const [confirmed, setConfirmed] = useState(false);  // User confirmation
@@ -78,13 +80,27 @@ export function OnboardingModal() {
             if (user) {
                 initializeUser(user.email || "", user.id);
 
-                // Extract identity from Google metadata
+                // Extract CLEAN name (without enrollment suffix)
                 const name = extractFullName(user);
                 setFullName(name);
                 setEmail(user.email || null);
 
-                // Try to get branch from email domain
-                if (user.email) {
+                // Auto-populate enrollment if found in name suffix
+                const enrollmentFromName = extractEnrollmentFromName(user);
+                if (enrollmentFromName) {
+                    setEnrollmentNumber(enrollmentFromName);
+                    // Trigger derivation
+                    const parsed = parseEnrollmentNumber(enrollmentFromName);
+                    if (parsed) {
+                        setBranchName(getBranchName(parsed.branchCode));
+                        const semesterInfo = deriveSemester(parsed.enrollmentYear);
+                        setAcademicYear(semesterInfo.yearLabel);
+                        setSemester(semesterInfo.semester);
+                    }
+                }
+
+                // Try to get branch from email domain (fallback)
+                if (user.email && !branchName) {
                     const branch = getBranchFromEmail(user.email);
                     if (branch) {
                         setBranchName(branch);
