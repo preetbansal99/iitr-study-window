@@ -3,19 +3,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   BookOpen,
   FolderArchive,
   MessageSquare,
   Timer,
   ArrowRight,
-  Mail,
   Loader2,
-  CheckCircle2,
 } from "lucide-react";
-import { signInWithMagicLink, signInWithGoogle, getAllowedDomain } from "@/lib/auth";
+import { signInWithGoogle } from "@/lib/auth";
 
 // ============================================
 // FEATURES DATA
@@ -191,15 +187,11 @@ export default function HomePage() {
 }
 
 // ============================================
-// AUTH CARD
+// AUTH CARD (GOOGLE ONLY)
 // ============================================
 function AuthCard() {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const domain = getAllowedDomain();
 
   const handleGoogle = async () => {
     setIsGoogleLoading(true);
@@ -212,40 +204,13 @@ function AuthCard() {
     }
   };
 
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    try {
-      await signInWithMagicLink(email);
-      setSuccess(true);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <Card className="border-[hsl(0,0%,90%)] bg-white shadow-sm dark:border-[hsl(0,0%,20%)] dark:bg-[hsl(0,0%,10%)]">
-        <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-          <div>
-            <p className="font-medium">Check your email</p>
-            <p className="mt-1 text-sm text-[hsl(0,0%,45%)]">
-              We sent a sign-in link to <strong>{email}</strong>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="border-[hsl(0,0%,90%)] bg-white shadow-sm dark:border-[hsl(0,0%,20%)] dark:bg-[hsl(0,0%,10%)]">
       <CardContent className="p-6">
-        <h2 className="text-center text-lg font-medium">Ready to begin?</h2>
+        <h2 className="text-center text-lg font-medium">Sign in to continue</h2>
+        <p className="mt-1 text-center text-sm text-[hsl(0,0%,50%)]">
+          Use your IIT Roorkee Google account
+        </p>
 
         {error && (
           <div className="mt-4 rounded-lg border border-[hsl(0,0%,88%)] bg-[hsl(0,0%,96%)] p-3 text-sm text-[hsl(0,0%,35%)] dark:border-[hsl(0,0%,22%)] dark:bg-[hsl(0,0%,12%)]">
@@ -254,12 +219,11 @@ function AuthCard() {
         )}
 
         <div className="mt-6 space-y-4">
-          {/* Google */}
           <Button
             type="button"
             onClick={handleGoogle}
             disabled={isGoogleLoading}
-            className="w-full gap-3 rounded-lg border border-[hsl(0,0%,88%)] bg-white py-5 text-sm font-medium text-[hsl(0,0%,15%)] shadow-none transition-colors hover:bg-[hsl(0,0%,96%)] dark:border-[hsl(0,0%,22%)] dark:bg-[hsl(0,0%,12%)] dark:text-[hsl(0,0%,90%)] dark:hover:bg-[hsl(0,0%,15%)]"
+            className="w-full gap-3 rounded-lg bg-[hsl(0,0%,9%)] py-6 text-sm font-medium text-white transition-all hover:bg-[hsl(0,0%,15%)] dark:bg-[hsl(0,0%,95%)] dark:text-[hsl(0,0%,9%)] dark:hover:bg-[hsl(0,0%,85%)]"
           >
             {isGoogleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -275,57 +239,15 @@ function AuthCard() {
           </Button>
 
           <p className="text-center text-xs text-[hsl(0,0%,50%)]">
-            We only access your email for authentication.
+            We only access your name and email for authentication.
           </p>
 
-          {/* Separator */}
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[hsl(0,0%,90%)] dark:bg-[hsl(0,0%,20%)]" />
-            <span className="text-xs text-[hsl(0,0%,50%)]">or</span>
-            <div className="h-px flex-1 bg-[hsl(0,0%,90%)] dark:bg-[hsl(0,0%,20%)]" />
-          </div>
-
-          {/* Magic Link */}
-          <form onSubmit={handleMagicLink} className="space-y-3">
-            <div>
-              <Label htmlFor="email" className="text-xs font-medium text-[hsl(0,0%,40%)]">
-                Institute email
-              </Label>
-              <div className="relative mt-1">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(0,0%,55%)]" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={`you${domain}`}
-                  required
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              variant="outline"
-              className="w-full py-5 text-sm"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send sign-in link"
-              )}
-            </Button>
-          </form>
-
-          <p className="pt-2 text-center text-xs text-[hsl(0,0%,50%)]">
-            Only <span className="font-medium">{domain}</span> emails supported.
+          <p className="text-center text-xs text-[hsl(0,0%,45%)]">
+            Only <span className="font-medium">@*.iitr.ac.in</span> emails are supported.
           </p>
         </div>
       </CardContent>
     </Card>
   );
 }
+

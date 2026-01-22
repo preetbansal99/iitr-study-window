@@ -4,8 +4,6 @@ import {
     validateUsernameFormat,
     normalizeUsername,
     validatePhone,
-    type BranchValue,
-    type YearValue
 } from '@/lib/validation/username';
 
 /**
@@ -36,15 +34,29 @@ export interface UserProfile {
     email: string;
     username: string | null;
     fullName: string | null;
-    branch: BranchValue | null;
-    year: YearValue | null;
+
+    // Academic Identity (locked after first save)
+    enrollmentNumber: string | null;
+    enrollmentYear: number | null;
+    branchCode: number | null;
+    branchName: string | null;
+    rollNumber: number | null;
+    currentAcademicYear: number | null;  // 1, 2, 3, or 4
+    currentSemester: number | null;       // 1-8
+    identityLocked: boolean;              // Prevents editing identity fields
+
+    // Contact & Profile
     phone: string | null;
     avatarUrl: string | null;
-    bio: string | null;                              // Short academic bio
-    anonymousPostingDefault: boolean;                // Toggle for anonymous posting
+    bio: string | null;
+
+    // Preferences
+    anonymousPostingDefault: boolean;
     notificationPreferences: NotificationPreferences;
-    usernameHistory: UsernameHistoryEntry[];         // For moderation
-    usernameLastChangedAt: string | null;            // For 30-day cooldown
+
+    // Tracking
+    usernameHistory: UsernameHistoryEntry[];
+    usernameLastChangedAt: string | null;
     createdAt: string;
     updatedAt: string;
     lastEditedAt: string | null;
@@ -107,11 +119,23 @@ export const useUserStore = create<UserState>()(
                         email,
                         username: null,
                         fullName: null,
-                        branch: null,
-                        year: null,
+
+                        // Academic Identity
+                        enrollmentNumber: null,
+                        enrollmentYear: null,
+                        branchCode: null,
+                        branchName: null,
+                        rollNumber: null,
+                        currentAcademicYear: null,
+                        currentSemester: null,
+                        identityLocked: false,
+
+                        // Contact & Profile
                         phone: null,
                         avatarUrl: null,
                         bio: null,
+
+                        // Preferences
                         anonymousPostingDefault: false,
                         notificationPreferences: {
                             replies: true,
@@ -119,6 +143,8 @@ export const useUserStore = create<UserState>()(
                             upvotes: false,
                             newThreads: true,
                         },
+
+                        // Tracking
                         usernameHistory: [],
                         usernameLastChangedAt: null,
                         createdAt: new Date().toISOString(),

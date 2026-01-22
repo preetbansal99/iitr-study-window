@@ -98,7 +98,7 @@ export default function BranchCommunityPage() {
 
     // Check posting permission
     const canPost = canPostInChannel(ctx, postingPolicy, channelType, {
-        userBranch: profile?.branch,
+        userBranch: profile?.branchName || null,
         channelBranch: branch,
     });
 

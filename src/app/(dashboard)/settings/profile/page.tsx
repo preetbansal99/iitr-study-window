@@ -74,8 +74,8 @@ export default function ProfileSettingsPage() {
     useEffect(() => {
         if (profile) {
             setUsername(profile.username || "");
-            setBranch(profile.branch || "");
-            setYear(profile.year?.toString() || "");
+            setBranch(profile.branchName || "");
+            setYear(profile.currentSemester ? `Semester ${profile.currentSemester}` : "");
             setPhone(profile.phone || "");
             setBio(profile.bio || "");
             setAnonymousDefault(profile.anonymousPostingDefault || false);
@@ -124,11 +124,9 @@ export default function ProfileSettingsPage() {
                 }
             }
 
-            // Update profile
+            // Update profile (only editable fields - identity is locked)
             await updateProfile({
                 username: username || undefined,
-                branch: branch as "ee" | "cse" | "ece" | "me" | "ce" | "che" | "bt" | "arch" | "meta" | "phy" | "other" | undefined,
-                year: year ? parseInt(year) as 1 | 2 | 3 | 4 | 5 : undefined,
                 phone: phone || undefined,
                 bio: bio || undefined,
                 anonymousPostingDefault: anonymousDefault,

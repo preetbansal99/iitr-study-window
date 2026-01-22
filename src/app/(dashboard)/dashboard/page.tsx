@@ -79,7 +79,7 @@ export default function DashboardPage() {
     : profile?.fullName?.split(" ")[0] || "Student";
 
   // Get personalized course suggestion based on branch
-  const suggestedCourse = profile?.branch ? BRANCH_COURSES[profile.branch] : null;
+  const suggestedCourse = profile?.branchName ? BRANCH_COURSES[profile.branchName as keyof typeof BRANCH_COURSES] : null;
 
   // Encouraging message based on time of day
   const encouragingMessage = suggestedCourse

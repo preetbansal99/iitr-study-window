@@ -12,34 +12,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { useUserStore } from "@/stores/user-store";
 import { createClient } from "@/lib/supabase/client";
 import {
     validateUsernameFormat,
     normalizeUsername,
-    BRANCH_OPTIONS,
-    YEAR_OPTIONS,
 } from "@/lib/validation/username";
-import { Loader2, User, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
+import {
+    parseEnrollmentNumber,
+    getBranchName,
+    getBranchFromEmail,
+    getBranchCodeFromEmail,
+    deriveSemester,
+    extractFullName,
+} from "@/lib/academic-identity";
+import {
+    Loader2,
+    User,
+    CheckCircle2,
+    AlertCircle,
+    GraduationCap,
+    Lock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface OnboardingModalProps {
-    forceOpen?: boolean; // For testing
-}
-
-export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
+export function OnboardingModal() {
     const {
         profile,
         initializeUser,
         updateProfile,
-        skipOnboarding,
         isOnboardingRequired,
         checkUsernameAvailable,
     } = useUserStore();
@@ -50,22 +51,41 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
 
     // Form state
     const [username, setUsername] = useState("");
-    const [branch, setBranch] = useState<string>("");
-    const [year, setYear] = useState<string>("");
-    const [phone, setPhone] = useState("");
+    const [enrollmentNumber, setEnrollmentNumber] = useState("");
+
+    // Derived identity (computed from Google + enrollment)
+    const [fullName, setFullName] = useState<string | null>(null);
+    const [email, setEmail] = useState<string | null>(null);
+    const [branchName, setBranchName] = useState<string | null>(null);
+    const [academicYear, setAcademicYear] = useState<string | null>(null);
+    const [semester, setSemester] = useState<number | null>(null);
+    const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
 
     // Validation state
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [usernameValid, setUsernameValid] = useState(false);
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
-    // Initialize user on mount
+    // Initialize user and extract identity from Google
     useEffect(() => {
         const initUser = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 initializeUser(user.email || "", user.id);
+
+                // Extract identity from Google metadata
+                const name = extractFullName(user);
+                setFullName(name);
+                setEmail(user.email || null);
+
+                // Try to get branch from email domain
+                if (user.email) {
+                    const branch = getBranchFromEmail(user.email);
+                    if (branch) {
+                        setBranchName(branch);
+                    }
+                }
             }
         };
         initUser();
@@ -73,12 +93,8 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
 
     // Check if onboarding is required
     useEffect(() => {
-        if (forceOpen !== undefined) {
-            setIsOpen(forceOpen);
-        } else {
-            setIsOpen(isOnboardingRequired());
-        }
-    }, [profile, isOnboardingRequired, forceOpen]);
+        setIsOpen(isOnboardingRequired());
+    }, [profile, isOnboardingRequired]);
 
     // Validate username on change (debounced)
     useEffect(() => {
@@ -110,20 +126,64 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
         return () => clearTimeout(timer);
     }, [username, checkUsernameAvailable]);
 
+    // Validate and derive identity from enrollment number
+    useEffect(() => {
+        if (!enrollmentNumber) {
+            setEnrollmentError(null);
+            return;
+        }
+
+        const parsed = parseEnrollmentNumber(enrollmentNumber);
+        if (!parsed) {
+            setEnrollmentError("Invalid format. Expected 8 digits (e.g., 25115109)");
+            setAcademicYear(null);
+            setSemester(null);
+            return;
+        }
+
+        setEnrollmentError(null);
+
+        // Get branch name from enrollment code
+        const enrollmentBranch = getBranchName(parsed.branchCode);
+        if (enrollmentBranch) {
+            setBranchName(enrollmentBranch);
+        }
+
+        // Derive semester from enrollment year
+        const semesterInfo = deriveSemester(parsed.enrollmentYear);
+        setAcademicYear(semesterInfo.yearLabel);
+        setSemester(semesterInfo.semester);
+    }, [enrollmentNumber]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!usernameValid) {
+        if (!usernameValid || !enrollmentNumber || enrollmentError) {
             return;
         }
 
         setIsSubmitting(true);
 
+        const parsed = parseEnrollmentNumber(enrollmentNumber);
+        if (!parsed) {
+            setIsSubmitting(false);
+            return;
+        }
+
+        const semesterInfo = deriveSemester(parsed.enrollmentYear);
+        const branchCode = parsed.branchCode || getBranchCodeFromEmail(email || "");
+
         const result = await updateProfile({
             username: normalizeUsername(username),
-            branch: branch as typeof BRANCH_OPTIONS[number]['value'] || null,
-            year: year ? parseInt(year) as typeof YEAR_OPTIONS[number]['value'] : null,
-            phone: phone || null,
+            fullName: fullName,
+            enrollmentNumber: enrollmentNumber,
+            enrollmentYear: parsed.enrollmentYear,
+            branchCode: branchCode,
+            branchName: getBranchName(parsed.branchCode) || getBranchFromEmail(email || ""),
+            rollNumber: parsed.rollNumber,
+            currentAcademicYear: semesterInfo.academicYear,
+            currentSemester: semesterInfo.semester,
+            identityLocked: true, // Lock identity after first save
         });
 
         if (result.success) {
@@ -136,11 +196,6 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
         }
 
         setIsSubmitting(false);
-    };
-
-    const handleSkip = () => {
-        skipOnboarding();
-        setIsOpen(false);
     };
 
     // Don't render if no profile
@@ -165,24 +220,93 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
                             Welcome, @{normalizeUsername(username)}!
                         </h3>
                         <p className="mt-2 text-slate-600 dark:text-slate-400">
-                            Your profile is all set up.
+                            Your profile is all set.
                         </p>
                     </div>
                 ) : (
                     <>
                         <DialogHeader>
-                            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600">
-                                <Sparkles className="h-6 w-6 text-white" />
+                            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
+                                <GraduationCap className="h-6 w-6 text-white dark:text-slate-900" />
                             </div>
                             <DialogTitle className="text-center text-xl">
                                 Complete Your Profile
                             </DialogTitle>
                             <DialogDescription className="text-center">
-                                Choose a username to get started. You can update this later in settings.
+                                Verify your academic identity to get started.
                             </DialogDescription>
                         </DialogHeader>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Read-Only Identity Fields */}
+                            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                    <Lock className="h-3 w-3" />
+                                    Academic Identity (Auto-filled)
+                                </div>
+
+                                <div className="grid gap-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Name</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                            {fullName || "—"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Email</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                            {email || "—"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Branch</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                            {branchName || "—"}
+                                        </span>
+                                    </div>
+                                    {academicYear && (
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Year</span>
+                                            <span className="font-medium text-slate-900 dark:text-white">
+                                                {academicYear}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {semester && (
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Current Semester</span>
+                                            <span className="font-medium text-slate-900 dark:text-white">
+                                                Semester {semester}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Enrollment Number Input */}
+                            <div className="space-y-2">
+                                <Label htmlFor="enrollment" className="flex items-center gap-1">
+                                    Enrollment Number <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                    id="enrollment"
+                                    value={enrollmentNumber}
+                                    onChange={(e) => setEnrollmentNumber(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                                    placeholder="e.g., 25115109"
+                                    className={cn(
+                                        enrollmentError && "border-red-500 focus-visible:ring-red-500"
+                                    )}
+                                    maxLength={8}
+                                />
+                                {enrollmentError ? (
+                                    <p className="text-xs text-red-500">{enrollmentError}</p>
+                                ) : (
+                                    <p className="text-xs text-slate-500">
+                                        8 digits: YY (year) + BBB (branch) + XXX (roll)
+                                    </p>
+                                )}
+                            </div>
+
                             {/* Username Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="username" className="flex items-center gap-1">
@@ -201,7 +325,6 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
                                             usernameValid && "border-green-500 focus-visible:ring-green-500"
                                         )}
                                         autoComplete="off"
-                                        autoFocus
                                     />
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                         {isCheckingUsername && (
@@ -215,68 +338,20 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
                                         )}
                                     </div>
                                 </div>
-                                {usernameError && (
+                                {usernameError ? (
                                     <p className="text-xs text-red-500">{usernameError}</p>
+                                ) : (
+                                    <p className="text-xs text-slate-500">
+                                        3-30 characters. Letters, numbers, dash, underscore only.
+                                    </p>
                                 )}
-                                <p className="text-xs text-slate-500">
-                                    3-30 characters. Letters, numbers, dash, underscore only.
-                                </p>
                             </div>
 
-                            {/* Branch & Year */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch">Branch</Label>
-                                    <Select value={branch} onValueChange={setBranch}>
-                                        <SelectTrigger id="branch">
-                                            <SelectValue placeholder="Select branch" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {BRANCH_OPTIONS.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="year">Year</Label>
-                                    <Select value={year} onValueChange={setYear}>
-                                        <SelectTrigger id="year">
-                                            <SelectValue placeholder="Select year" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {YEAR_OPTIONS.map((option) => (
-                                                <SelectItem key={option.value} value={option.value.toString()}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Phone (Optional) */}
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">
-                                    Phone <span className="text-slate-400">(optional)</span>
-                                </Label>
-                                <Input
-                                    id="phone"
-                                    type="tel"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    placeholder="+91 XXXXXXXXXX"
-                                />
-                            </div>
-
-                            <DialogFooter className="flex-col gap-2 sm:flex-col">
+                            <DialogFooter>
                                 <Button
                                     type="submit"
                                     className="w-full"
-                                    disabled={isSubmitting || !usernameValid}
+                                    disabled={isSubmitting || !usernameValid || !enrollmentNumber || !!enrollmentError}
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -287,15 +362,11 @@ export function OnboardingModal({ forceOpen }: OnboardingModalProps) {
                                         "Complete Setup"
                                     )}
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    className="w-full text-slate-500"
-                                    onClick={handleSkip}
-                                >
-                                    Skip for now
-                                </Button>
                             </DialogFooter>
+
+                            <p className="text-center text-xs text-slate-400">
+                                Academic identity fields cannot be changed after setup.
+                            </p>
                         </form>
                     </>
                 )}
