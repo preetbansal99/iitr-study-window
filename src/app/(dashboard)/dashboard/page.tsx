@@ -26,22 +26,11 @@ import {
   Sun,
   Moon,
   Sunset,
+  Plus,
 } from "lucide-react";
 import { useUserStore } from "@/stores/user-store";
-
-// Demo data
-const DEMO_SCHEDULE = [
-  { id: "1", subject_name: "Data Structures", type: "Lecture", start_time: "09:00", end_time: "10:00", room_number: "LH-101", color: "#3b82f6" },
-  { id: "2", subject_name: "Computer Networks", type: "Tutorial", start_time: "11:00", end_time: "12:00", room_number: "LH-205", color: "#10b981" },
-  { id: "3", subject_name: "Operating Systems", type: "Practical", start_time: "14:00", end_time: "16:00", room_number: "Lab-3", color: "#f59e0b" },
-  { id: "4", subject_name: "Algorithm Design", type: "Lecture", start_time: "16:00", end_time: "17:00", room_number: "LH-102", color: "#8b5cf6" },
-];
-
-const DEMO_EVENTS = [
-  { id: "1", title: "Mid-Semester Exam", date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], type: "Exam", color: "#ef4444" },
-  { id: "2", title: "Project Submission", date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], type: "Deadline", color: "#f59e0b" },
-  { id: "3", title: "Hackathon", date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], type: "Event", color: "#10b981" },
-];
+import { createClient } from "@/lib/supabase/client";
+import type { TimetableEntry, Event } from "@/lib/types";
 
 // Branch to course code mapping for personalized suggestions
 const BRANCH_COURSES: Record<string, string> = {
@@ -72,6 +61,54 @@ export default function DashboardPage() {
 
   // Get user profile for personalized greeting
   const { profile } = useUserStore();
+
+  // Real schedule data from Supabase
+  const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
+
+  // Fetch real schedule data
+  useEffect(() => {
+    const fetchScheduleData = async () => {
+      setIsLoadingSchedule(true);
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setIsLoadingSchedule(false);
+        return;
+      }
+
+      // Get today's day of week (0 = Sunday, 6 = Saturday)
+      const today = new Date().getDay();
+
+      // Fetch today's timetable entries
+      const { data: timetableData } = await supabase
+        .from("timetable")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("day_of_week", today)
+        .order("start_time", { ascending: true });
+
+      // Fetch upcoming events (next 30 days)
+      const todayStr = new Date().toISOString().split("T")[0];
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      const { data: eventsData } = await supabase
+        .from("events")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", todayStr)
+        .lte("date", futureDate)
+        .order("date", { ascending: true });
+
+      setTodaySchedule(timetableData || []);
+      setUpcomingEvents(eventsData || []);
+      setIsLoadingSchedule(false);
+    };
+
+    fetchScheduleData();
+  }, []);
 
   // Use username if available, fallback to "Student"
   const displayName = profile?.username
@@ -184,42 +221,57 @@ export default function DashboardPage() {
                   <CalendarDays className="h-5 w-5 text-blue-600" />
                   Today&apos;s Classes
                 </CardTitle>
-                <Badge variant="secondary">{DEMO_SCHEDULE.length} classes</Badge>
+                <Badge variant="secondary">{todaySchedule.length} classes</Badge>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {DEMO_SCHEDULE.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
+                {todaySchedule.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <CalendarDays className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                      No classes scheduled for today
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/timetable" className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add to Timetable
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {todaySchedule.map((entry) => (
                       <div
-                        className="h-14 w-1.5 rounded-full"
-                        style={{ backgroundColor: entry.color }}
-                      />
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-900 dark:text-white">
-                          {entry.subject_name}
-                        </p>
-                        <div className="flex items-center gap-3 text-sm text-slate-500">
-                          <span>{entry.type}</span>
-                          {entry.room_number && (
-                            <>
-                              <span>•</span>
-                              <span>{entry.room_number}</span>
-                            </>
-                          )}
+                        key={entry.id}
+                        className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <div
+                          className="h-14 w-1.5 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {entry.subject_name}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm text-slate-500">
+                            <span>{entry.type}</span>
+                            {entry.room_number && (
+                              <>
+                                <span>•</span>
+                                <span>{entry.room_number}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {entry.start_time}
+                          </p>
+                          <p className="text-sm text-slate-500">{entry.end_time}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-900 dark:text-white">
-                          {entry.start_time}
-                        </p>
-                        <p className="text-sm text-slate-500">{entry.end_time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -230,51 +282,66 @@ export default function DashboardPage() {
                   <BookOpen className="h-5 w-5 text-purple-600" />
                   Upcoming Events
                 </CardTitle>
-                <Badge variant="secondary">{DEMO_EVENTS.length} events</Badge>
+                <Badge variant="secondary">{upcomingEvents.length} events</Badge>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {DEMO_EVENTS.map((event) => {
-                    const eventDate = new Date(event.date);
-                    const isToday = eventDate.toDateString() === new Date().toDateString();
-                    const isTomorrow = eventDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                {upcomingEvents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <BookOpen className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                      No upcoming events
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/calendar" className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Event
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {upcomingEvents.map((event) => {
+                      const eventDate = new Date(event.date);
+                      const isToday = eventDate.toDateString() === new Date().toDateString();
+                      const isTomorrow = eventDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
 
-                    return (
-                      <div
-                        key={event.id}
-                        className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
+                      return (
                         <div
-                          className="flex h-14 w-14 flex-col items-center justify-center rounded-xl text-white"
-                          style={{ backgroundColor: event.color }}
+                          key={event.id}
+                          className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
-                          <span className="text-xs font-medium uppercase">
-                            {eventDate.toLocaleDateString("en", { month: "short" })}
-                          </span>
-                          <span className="text-xl font-bold leading-none">
-                            {eventDate.getDate()}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900 dark:text-white">
-                            {event.title}
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-slate-500">
-                            <Badge variant="outline" className="text-xs">
-                              {event.type}
-                            </Badge>
-                            {isToday && (
-                              <span className="font-medium text-red-500">Today</span>
-                            )}
-                            {isTomorrow && (
-                              <span className="font-medium text-orange-500">Tomorrow</span>
-                            )}
+                          <div
+                            className="flex h-14 w-14 flex-col items-center justify-center rounded-xl text-white"
+                            style={{ backgroundColor: event.color }}
+                          >
+                            <span className="text-xs font-medium uppercase">
+                              {eventDate.toLocaleDateString("en", { month: "short" })}
+                            </span>
+                            <span className="text-xl font-bold leading-none">
+                              {eventDate.getDate()}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-slate-900 dark:text-white">
+                              {event.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <Badge variant="outline" className="text-xs">
+                                {event.type}
+                              </Badge>
+                              {isToday && (
+                                <span className="font-medium text-red-500">Today</span>
+                              )}
+                              {isTomorrow && (
+                                <span className="font-medium text-orange-500">Tomorrow</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
