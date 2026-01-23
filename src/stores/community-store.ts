@@ -258,18 +258,22 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
     createThread: async (threadData) => {
         const supabase = createClient();
-        const { data: authData } = await supabase.auth.getUser();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
 
-        if (!authData.user) {
-            console.error('Cannot create thread: user not authenticated');
-            return null;
+        // THROW errors instead of silent return
+        if (authError || !authData.user) {
+            throw new Error('User not authenticated. Please sign in to post.');
+        }
+
+        if (!threadData.channelId) {
+            throw new Error('Community not found. Cannot post thread.');
         }
 
         const payload = {
-            community_id: threadData.channelId, // channelId is communityId in UI
+            community_id: threadData.channelId,
             user_id: authData.user.id,
             title: threadData.title,
-            content: threadData.body, // body maps to content column
+            content: threadData.body,
             is_anonymous: threadData.isAnonymous,
         };
 
@@ -280,8 +284,8 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             .single();
 
         if (error) {
-            console.error('Error creating thread:', error);
-            return null;
+            console.error('Supabase error:', error);
+            throw new Error(`Failed to create thread: ${error.message}`);
         }
 
         // Map to Thread interface for UI

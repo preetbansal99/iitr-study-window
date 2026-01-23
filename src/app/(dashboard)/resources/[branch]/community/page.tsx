@@ -68,6 +68,7 @@ export default function BranchCommunityPage() {
     const [newTag, setNewTag] = useState<ThreadTag>("Discussion");
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [postError, setPostError] = useState<string | null>(null);
 
     // Initialize store
     useEffect(() => {
@@ -83,8 +84,8 @@ export default function BranchCommunityPage() {
     const ctx = { userEmail, userId };
 
     // Get branch channel
-    const branchChannel = channels.find(c => c.branchCode === branch) || channels.find(c => c.id === 'channel-general');
-    const channelId = branchChannel?.id || 'channel-general';
+    const branchChannel = channels.find(c => c.branchCode === branch);
+    const channelId = branchChannel?.id || null; // null if no community exists
     const postingPolicy = branchChannel?.postingPolicy || 'STUDENT_ALLOWED';
     const channelType = branchChannel?.channelType || 'branch';
 
@@ -114,11 +115,21 @@ export default function BranchCommunityPage() {
 
     // Handle thread creation
     const handleCreateThread = async () => {
-        if (!newTitle.trim() || !newBody.trim()) return;
-        if (!userId) {
-            console.error('User not authenticated');
+        setPostError(null); // Clear previous error
+
+        if (!newTitle.trim() || !newBody.trim()) {
+            setPostError('Title and body are required.');
             return;
         }
+        if (!userId) {
+            setPostError('You must be signed in to post.');
+            return;
+        }
+        if (!channelId) {
+            setPostError('No community found for this branch. Please contact admin.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -131,16 +142,15 @@ export default function BranchCommunityPage() {
                 isAnonymous,
             });
 
-            if (result) {
-                setNewTitle("");
-                setNewBody("");
-                setIsAnonymous(false);
-                setShowCreateDialog(false);
-            } else {
-                console.error('Failed to create thread - check RLS policies');
-            }
+            // Success - close modal and reset
+            setNewTitle("");
+            setNewBody("");
+            setIsAnonymous(false);
+            setShowCreateDialog(false);
         } catch (error) {
-            console.error('Error creating thread:', error);
+            // Show error to user
+            const message = error instanceof Error ? error.message : 'Failed to create thread';
+            setPostError(message);
         } finally {
             setIsSubmitting(false);
         }
@@ -253,18 +263,25 @@ export default function BranchCommunityPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleCreateThread}
-                                        disabled={!newTitle.trim() || !newBody.trim() || isSubmitting}
-                                        className="gap-2"
-                                    >
-                                        <Send className="h-4 w-4" />
-                                        Post Thread
-                                    </Button>
+                                <DialogFooter className="flex-col gap-2">
+                                    {postError && (
+                                        <div className="w-full rounded-md bg-red-50 dark:bg-red-950 p-3 text-sm text-red-600 dark:text-red-400">
+                                            {postError}
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2 justify-end w-full">
+                                        <Button variant="outline" onClick={() => { setShowCreateDialog(false); setPostError(null); }}>
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            onClick={handleCreateThread}
+                                            disabled={!newTitle.trim() || !newBody.trim() || isSubmitting || !channelId}
+                                            className="gap-2"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                            {isSubmitting ? 'Posting...' : 'Post Thread'}
+                                        </Button>
+                                    </div>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
