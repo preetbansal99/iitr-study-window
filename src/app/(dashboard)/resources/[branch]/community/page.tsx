@@ -83,9 +83,21 @@ export default function BranchCommunityPage() {
     const userId = profile?.id || null; // Null if not authenticated
     const ctx = { userEmail, userId };
 
-    // Get branch channel
-    const branchChannel = channels.find(c => c.branchCode === branch);
-    const channelId = branchChannel?.id || null; // null if no community exists
+    // Get branch channel - CASE-INSENSITIVE match
+    // Debug: Log available channels and matching logic
+    console.log('[DEBUG] Available channels:', channels.map(c => ({ id: c.id, name: c.name, branchCode: c.branchCode, type: c.channelType })));
+    console.log('[DEBUG] Looking for branch:', branch);
+
+    const branchChannel = channels.find(c =>
+        c.branchCode?.toLowerCase() === branch.toLowerCase() ||
+        c.name?.toLowerCase().includes(branch.toLowerCase())
+    );
+    const channelId = branchChannel?.id || null;
+
+    console.log('[DEBUG] Matched channel:', branchChannel);
+    console.log('[DEBUG] channelId:', channelId);
+    console.log('[DEBUG] userId:', userId);
+
     const postingPolicy = branchChannel?.postingPolicy || 'STUDENT_ALLOWED';
     const channelType = branchChannel?.channelType || 'branch';
 
@@ -115,24 +127,41 @@ export default function BranchCommunityPage() {
 
     // Handle thread creation
     const handleCreateThread = async () => {
+        // DEBUG LOGS
+        console.log('=== POST THREAD CLICKED ===');
+        console.log('title:', newTitle);
+        console.log('body:', newBody);
+        console.log('channelId (community_id):', channelId);
+        console.log('userId:', userId);
+        console.log('isAnonymous:', isAnonymous);
+
         setPostError(null); // Clear previous error
 
+        // Validation with detailed errors
         if (!newTitle.trim() || !newBody.trim()) {
-            setPostError('Title and body are required.');
+            const err = 'Title and body are required.';
+            console.error('VALIDATION FAILED:', err);
+            setPostError(err);
             return;
         }
         if (!userId) {
-            setPostError('You must be signed in to post.');
+            const err = 'You must be signed in to post.';
+            console.error('VALIDATION FAILED:', err);
+            setPostError(err);
             return;
         }
         if (!channelId) {
-            setPostError('No community found for this branch. Please contact admin.');
+            const err = 'No community found for this branch. Please contact admin.';
+            console.error('VALIDATION FAILED:', err, 'Branch:', branch, 'Available channels:', channels);
+            setPostError(err);
             return;
         }
 
+        console.log('VALIDATION PASSED - attempting Supabase insert...');
         setIsSubmitting(true);
 
         try {
+            console.log('Calling createThread with:', { channelId, title: newTitle.trim(), body: newBody.trim() });
             const result = await createThread({
                 channelId,
                 title: newTitle.trim(),
@@ -142,6 +171,7 @@ export default function BranchCommunityPage() {
                 isAnonymous,
             });
 
+            console.log('createThread SUCCESS:', result);
             // Success - close modal and reset
             setNewTitle("");
             setNewBody("");
@@ -149,6 +179,7 @@ export default function BranchCommunityPage() {
             setShowCreateDialog(false);
         } catch (error) {
             // Show error to user
+            console.error('createThread FAILED:', error);
             const message = error instanceof Error ? error.message : 'Failed to create thread';
             setPostError(message);
         } finally {
@@ -275,7 +306,7 @@ export default function BranchCommunityPage() {
                                         </Button>
                                         <Button
                                             onClick={handleCreateThread}
-                                            disabled={!newTitle.trim() || !newBody.trim() || isSubmitting || !channelId}
+                                            disabled={!newTitle.trim() || !newBody.trim() || isSubmitting}
                                             className="gap-2"
                                         >
                                             <Send className="h-4 w-4" />
