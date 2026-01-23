@@ -14,8 +14,7 @@ import {
     type ThreadSortOption,
 } from '@/lib/community/types';
 
-// Supabase constants - inferred from component usage
-// We assume tables: channels, threads, replies, upvotes, memberships
+// Supabase tables: communities, threads, replies
 
 interface CommunityState {
     // Data
@@ -101,25 +100,29 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
         set({ isLoading: true });
         const supabase = createClient();
 
-        // Fetch public channels with counts
-        const { data: channelsData, error: channelsError } = await supabase
-            .from('channels')
-            .select('*, threads(count), memberships(count)');
+        // Fetch communities (was 'channels')
+        const { data: communitiesData, error: communitiesError } = await supabase
+            .from('communities')
+            .select('*');
 
-        if (channelsError) {
-            console.error('Error fetching channels:', channelsError);
+        if (communitiesError) {
+            console.error('Error fetching communities:', communitiesError);
         }
 
-        const channels = (channelsData || []).map((c: any) => ({
-            ...c,
-            // Map Supabase count response which comes as [{ count: n }]
-            threadCount: c.threads?.[0]?.count || 0,
-            membersCount: c.memberships?.[0]?.count || c.members_count || 0,
-            // Ensure camelCase keys if DB is snake_case (Supabase JS client might auto-convert if configured, but explicit is safer or assuming DB matches types)
-            channelType: c.channel_type || c.channelType,
-            postingPolicy: c.posting_policy || c.postingPolicy,
-            createdAt: c.created_at || c.createdAt,
-            createdBy: c.created_by || c.createdBy,
+        // Map to Channel interface for compatibility
+        const channels = (communitiesData || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            channelType: c.type || 'general',
+            branchCode: c.reference_id,
+            postingPolicy: 'STUDENT_ALLOWED' as const,
+            createdAt: c.created_at,
+            createdBy: c.created_by,
+            threadCount: 0,
+            membersCount: 0,
+            isCourseChannel: c.type === 'course',
+            lastActivityAt: c.created_at,
         }));
 
         // Fetch user memberships if logged in
@@ -149,15 +152,15 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
         });
     },
 
-    fetchThreads: async (channelId: string) => {
+    fetchThreads: async (communityId: string) => {
         set({ isLoading: true });
         const supabase = createClient();
 
         const { data: threads, error } = await supabase
             .from('threads')
             .select('*')
-            .eq('channel_id', channelId)
-            .order('last_activity_at', { ascending: false });
+            .eq('community_id', communityId)
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching threads:', error);
@@ -165,11 +168,26 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             return;
         }
 
-        // Merge with existing threads (replace ones for this channel)
+        // Map to Thread interface
         set(state => ({
             threads: [
-                ...state.threads.filter(t => t.channelId !== channelId),
-                ...(threads || []).map(t => ({ ...t, channelId: t.channel_id, createdAt: t.created_at, updatedAt: t.updated_at, lastActivityAt: t.last_activity_at, upvotesCount: t.upvotes_count, replyCount: t.reply_count, isPinned: t.is_pinned })) // Map snake_case to camelCase if needed, assuming Supabase returns snake
+                ...state.threads.filter(t => t.channelId !== communityId),
+                ...(threads || []).map(t => ({
+                    id: t.id,
+                    channelId: t.community_id,
+                    title: t.title,
+                    body: t.content,
+                    tags: t.tags || [],
+                    createdBy: t.user_id,
+                    createdAt: t.created_at,
+                    updatedAt: t.created_at,
+                    lastActivityAt: t.created_at,
+                    upvotesCount: 0,
+                    replyCount: 0,
+                    isPinned: false,
+                    isAnonymous: t.is_anonymous || false,
+                    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                } as Thread))
             ],
             isLoading: false
         }));
@@ -240,14 +258,18 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
     createThread: async (threadData) => {
         const supabase = createClient();
-        const { data: user } = await supabase.auth.getUser();
+        const { data: authData } = await supabase.auth.getUser();
+
+        if (!authData.user) {
+            console.error('Cannot create thread: user not authenticated');
+            return null;
+        }
 
         const payload = {
-            channel_id: threadData.channelId,
+            community_id: threadData.channelId, // channelId is communityId in UI
+            user_id: authData.user.id,
             title: threadData.title,
-            body: threadData.body,
-            tags: threadData.tags,
-            created_by: user.user?.id || 'anonymous',
+            content: threadData.body, // body maps to content column
             is_anonymous: threadData.isAnonymous,
         };
 
@@ -262,18 +284,22 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             return null;
         }
 
-        // Map snake_case to camelCase for consistency
-        const mappedThread = {
-            ...data,
-            channelId: data.channel_id,
-            createdBy: data.created_by,
+        // Map to Thread interface for UI
+        const mappedThread: Thread = {
+            id: data.id,
+            channelId: data.community_id,
+            title: data.title,
+            body: data.content,
+            tags: [],
+            createdBy: data.user_id,
             createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            lastActivityAt: data.last_activity_at || data.created_at,
-            upvotesCount: data.upvotes_count || 0,
-            replyCount: data.reply_count || 0,
-            isPinned: data.is_pinned || false,
+            updatedAt: data.created_at,
+            lastActivityAt: data.created_at,
+            upvotesCount: 0,
+            replyCount: 0,
+            isPinned: false,
             isAnonymous: data.is_anonymous || false,
+            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         };
 
         // Optimistic update: prepend to threads array
@@ -281,8 +307,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             threads: [mappedThread, ...state.threads]
         }));
 
-        // Refetch to ensure consistency and visibility for all users
-        // This ensures DB-generated fields are synced and RLS is respected
+        // Refetch to ensure consistency
         setTimeout(() => {
             get().fetchThreads(threadData.channelId);
         }, 100);
@@ -324,12 +349,17 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
     createReply: async (replyData) => {
         const supabase = createClient();
-        const { data: user } = await supabase.auth.getUser();
+        const { data: authData } = await supabase.auth.getUser();
+
+        if (!authData.user) {
+            console.error('Cannot create reply: user not authenticated');
+            return null;
+        }
 
         const payload = {
             thread_id: replyData.threadId,
-            body: replyData.body,
-            created_by: user.user?.id || 'anonymous',
+            user_id: authData.user.id,
+            content: replyData.body, // body maps to content column
             is_anonymous: replyData.isAnonymous
         };
 
@@ -345,15 +375,25 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
         }
 
         const mappedReply = {
-            ...data,
+            id: data.id,
             threadId: data.thread_id,
+            body: data.content,
+            createdBy: data.user_id,
             createdAt: data.created_at,
-            upvotesCount: data.upvotes_count
+            upvotesCount: 0,
+            isAnonymous: data.is_anonymous || false,
+            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         };
 
         set(state => ({
             replies: [...state.replies, mappedReply]
         }));
+
+        // Refetch to ensure consistency
+        setTimeout(() => {
+            get().fetchReplies(replyData.threadId);
+        }, 100);
+
         return mappedReply;
     },
 
