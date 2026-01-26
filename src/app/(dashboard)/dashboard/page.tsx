@@ -138,6 +138,33 @@ export default function DashboardPage() {
         .order("date", { ascending: true });
 
       setUpcomingEvents(eventsData || []);
+
+      // 5. Merge Academic Events into Upcoming Events
+      const upcomingAcademicEvents = allAcademicEvents.filter(e => {
+        const startDate = new Date(e.start_date);
+        return startDate >= todayDate && startDate <= new Date(futureDate);
+      }).map(e => ({
+        id: e.id,
+        user_id: 'system',
+        title: e.title,
+        description: e.description,
+        date: e.start_date,
+        start_time: null,
+        end_time: null,
+        type: e.event_type === 'exam' ? 'Exam' : e.event_type === 'holiday' ? 'Other' : 'Other', // Type casting for display
+        location: null,
+        color: e.event_type === 'exam' ? '#ef4444' : e.event_type === 'holiday' ? '#f59e0b' : '#6366f1',
+        reminder_before: null,
+        created_at: e.created_at,
+        updated_at: e.created_at
+      } as Event));
+
+      // Combine and sort by date
+      const allUpcoming = [...(eventsData || []), ...upcomingAcademicEvents].sort((a, b) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      setUpcomingEvents(allUpcoming);
       setIsLoadingSchedule(false);
     };
 
