@@ -129,23 +129,26 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
 
         setIsSubmitting(true);
 
-        setIsSubmitting(true);
+        try {
+            await createThread({
+                channelId,
+                title: newTitle.trim(),
+                body: newBody.trim(),
+                tags: newTags.length > 0 ? newTags : ['Discussion'],
+                createdBy: isAnonymous ? null : userId,
+                isAnonymous,
+            });
 
-        await createThread({
-            channelId,
-            title: newTitle.trim(),
-            body: newBody.trim(),
-            tags: newTags.length > 0 ? newTags : ['Discussion'],
-            createdBy: isAnonymous ? null : userId,
-            isAnonymous,
-        });
-
-        setNewTitle("");
-        setNewBody("");
-        setNewTags([]);
-        setIsAnonymous(false);
-        setIsComposerOpen(false);
-        setIsSubmitting(false);
+            setNewTitle("");
+            setNewBody("");
+            setNewTags([]);
+            setIsAnonymous(false);
+            setIsComposerOpen(false);
+            setIsSubmitting(false);
+        } catch (error) {
+            console.error('Failed to create thread:', error);
+            setIsSubmitting(false);
+        }
     };
 
     const handleCreateReply = async () => {
@@ -159,9 +162,6 @@ export default function ChannelPage({ params }: { params: Promise<{ channelId: s
             createdBy: userId!,
             isAnonymous: false,
         });
-
-        setReplyBody("");
-        setIsSubmitting(false);
 
         setReplyBody("");
         setIsSubmitting(false);

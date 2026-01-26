@@ -41,7 +41,7 @@ import type { PostingPolicy, Channel } from "@/lib/community/types";
 
 export default function GeneralCommunityPage() {
     const router = useRouter();
-    const { channels, initialize, threads } = useCommunityStore();
+    const { channels, initialize, threads, createChannel } = useCommunityStore();
     const { profile } = useUserStore();
 
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -92,13 +92,25 @@ export default function GeneralCommunityPage() {
     };
 
     // Handle channel creation (admin only)
-    const handleCreateChannel = () => {
-        // In real implementation, would call store.createChannel()
-        alert(`Creating channel: ${newChannelName} with policy: ${newChannelPolicy}`);
-        setShowCreateDialog(false);
-        setNewChannelName("");
-        setNewChannelDescription("");
-        setNewChannelPolicy("STUDENT_ALLOWED");
+    const handleCreateChannel = async () => {
+        if (!newChannelName.trim()) return;
+
+        try {
+            await createChannel({
+                name: newChannelName.trim(),
+                description: newChannelDescription.trim() || undefined,
+                type: 'general',
+                postingPolicy: newChannelPolicy,
+            });
+
+            setShowCreateDialog(false);
+            setNewChannelName("");
+            setNewChannelDescription("");
+            setNewChannelPolicy("STUDENT_ALLOWED");
+        } catch (error) {
+            console.error('Failed to create channel:', error);
+            alert('Failed to create channel: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
     };
 
     return (

@@ -119,4 +119,44 @@ export const RESOURCE_CATEGORIES = [
   "Other",
 ] as const;
 
+
 export const RESOURCE_TYPES = ["PDF", "Link", "Contact", "Video"] as const;
+
+// ==========================================
+// ACADEMIC CALENDAR TYPES
+// ==========================================
+
+export type AcademicEventType =
+  | 'teaching'
+  | 'exam'
+  | 'holiday'
+  | 'registration'
+  | 'feedback'
+  | 'institute_event'
+  | 'timetable_override'
+  | 'vacation';
+
+export type AcademicDayState =
+  | 'NORMAL_TEACHING_DAY'
+  | 'HOLIDAY'
+  | 'EXAM_DAY'
+  | 'EXAM_BREAK'
+  | 'TIMETABLE_OVERRIDE_DAY'
+  | 'VACATION';
+
+export interface AcademicEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: AcademicEventType;
+  start_date: string; // ISO Date YYYY-MM-DD
+  end_date: string;   // ISO Date YYYY-MM-DD
+  is_all_day: boolean;
+  semester: string;
+  metadata: {
+    override_day_of_week?: number;
+    exam_type?: string;
+    [key: string]: any;
+  };
+  created_at: string;
+}

@@ -47,6 +47,7 @@ interface CommunityState {
     getChannel: (channelId: string) => Channel | undefined;
     getUser: (userId: string) => CommunityUser | undefined;
     getChannelsForUser: (userId: string) => Channel[];
+    createChannel: (channel: { name: string; description?: string; type: 'general' | 'branch' | 'course'; referenceId?: string; postingPolicy?: 'ADMIN_ONLY' | 'STUDENT_ALLOWED' | 'READ_ONLY_ARCHIVE' }) => Promise<Channel | null>;
     joinChannel: (userId: string, channelId: string) => Promise<void>;
     leaveChannel: (userId: string, channelId: string) => Promise<void>;
 
@@ -222,6 +223,57 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
     getChannelsForUser: (userId) => {
         return get().channels; // Simplified for now, verify private implementation later
+    },
+
+    createChannel: async (channelData) => {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !authData.user) {
+            throw new Error('User not authenticated. Please sign in to create a channel.');
+        }
+
+        const payload = {
+            name: channelData.name,
+            description: channelData.description || null,
+            type: channelData.type,
+            reference_id: channelData.referenceId || null,
+            created_by: authData.user.id,
+        };
+
+        const { data, error } = await supabase
+            .from('communities')
+            .insert(payload)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Supabase error creating channel:', error);
+            throw new Error(`Failed to create channel: ${error.message}`);
+        }
+
+        // Map to Channel interface
+        const newChannel: Channel = {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            channelType: data.type || 'general',
+            branchCode: data.reference_id,
+            postingPolicy: channelData.postingPolicy || 'STUDENT_ALLOWED',
+            createdAt: data.created_at,
+            createdBy: data.created_by,
+            threadCount: 0,
+            membersCount: 0,
+            isCourseChannel: data.type === 'course',
+            lastActivityAt: data.created_at,
+        };
+
+        // Add to local state
+        set(state => ({
+            channels: [...state.channels, newChannel]
+        }));
+
+        return newChannel;
     },
 
     joinChannel: async (userId, channelId) => {
