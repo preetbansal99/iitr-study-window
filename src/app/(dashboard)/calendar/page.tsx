@@ -34,7 +34,7 @@ import {
   ChevronRight,
   CalendarDays,
 } from "lucide-react";
-import type { Event, TimetableEntry } from "@/lib/types";
+import type { Event, TimetableEntry, AcademicEvent } from "@/lib/types";
 import { EVENT_TYPES, DAYS_OF_WEEK } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -48,10 +48,13 @@ import {
   subMonths,
   startOfWeek,
   endOfWeek,
+  parseISO,
 } from "date-fns";
+import { resolveAcademicDay } from "@/lib/academic-calendar";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -95,8 +98,15 @@ export default function CalendarPage() {
       .select("*")
       .eq("user_id", user?.id);
 
+    // Fetch Academic Events
+    const { data: academicData } = await supabase
+      .from("academic_calendar_events")
+      .select("*")
+      .eq("semester", "Spring 2025-26");
+
     if (eventsData) setEvents(eventsData);
     if (timetableData) setTimetable(timetableData);
+    if (academicData) setAcademicEvents(academicData as AcademicEvent[]);
     setIsLoading(false);
   };
 
@@ -156,7 +166,24 @@ export default function CalendarPage() {
 
   // Get events for a specific day
   const getEventsForDay = (date: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.date), date));
+    // Personal events
+    const personalEvents = events.filter((event) => isSameDay(new Date(event.date), date));
+
+    // Academic events
+    const academicEventsForDay = academicEvents.filter((event) => {
+      const eventStart = parseISO(event.start_date);
+      const eventEnd = parseISO(event.end_date);
+      // Check if date is within range [start, end]
+      // We use isSameDay for start/end to be inclusive and handle single day events correctly
+      // But robust way is: date >= start && date <= end
+      // Let's use simple logic for now:
+      const d = new Date(date.setHours(0, 0, 0, 0));
+      const s = new Date(eventStart.setHours(0, 0, 0, 0));
+      const e = new Date(eventEnd.setHours(0, 0, 0, 0));
+      return d >= s && d <= e;
+    });
+
+    return { personal: personalEvents, academic: academicEventsForDay };
   };
 
   // Get timetable entries for a day
@@ -166,8 +193,13 @@ export default function CalendarPage() {
   };
 
   // Get selected day's schedule
-  const selectedDayEvents = selectedDate ? getEventsForDay(selectedDate) : [];
+  const { personal: selectedDayEvents, academic: selectedDayAcademicEvents } = selectedDate
+    ? getEventsForDay(selectedDate)
+    : { personal: [], academic: [] };
   const selectedDayTimetable = selectedDate ? getTimetableForDay(selectedDate) : [];
+
+  // Check academic state for the selected day
+  const academicState = selectedDate ? resolveAcademicDay(selectedDate, academicEvents) : 'NORMAL_TEACHING_DAY';
 
   return (
     <div className="p-4 lg:p-8">
@@ -374,11 +406,16 @@ export default function CalendarPage() {
               {/* Calendar grid */}
               <div className="grid grid-cols-7 gap-1">
                 {calendarDays.map((day) => {
-                  const dayEvents = getEventsForDay(day);
+                  const { personal: dayEvents, academic: dayAcademicEvents } = getEventsForDay(day);
                   const dayTimetable = getTimetableForDay(day);
                   const isToday = isSameDay(day, new Date());
                   const isCurrentMonth = isSameMonth(day, currentMonth);
                   const isSelected = selectedDate && isSameDay(day, selectedDate);
+
+                  // Check if it's a holiday or exam day
+                  const dayState = resolveAcademicDay(day, academicEvents);
+                  const isHoliday = dayState === 'HOLIDAY';
+                  const isExam = dayState === 'EXAM_DAY';
 
                   return (
                     <button
@@ -388,16 +425,20 @@ export default function CalendarPage() {
                         "relative flex min-h-[80px] flex-col rounded-lg border p-1 text-left transition-all hover:bg-slate-50 dark:hover:bg-slate-800",
                         !isCurrentMonth && "opacity-40",
                         isSelected &&
-                          "border-blue-500 bg-blue-50 dark:bg-blue-950",
+                        "border-blue-500 bg-blue-50 dark:bg-blue-950",
                         isToday &&
-                          !isSelected &&
-                          "border-blue-300 bg-blue-50/50 dark:border-blue-700"
+                        !isSelected &&
+                        "border-blue-300 bg-blue-50/50 dark:border-blue-700",
+                        isHoliday && !isSelected && "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800",
+                        isExam && !isSelected && "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
                       )}
                     >
                       <span
                         className={cn(
                           "mb-1 flex h-6 w-6 items-center justify-center rounded-full text-sm",
-                          isToday && "bg-blue-600 text-white"
+                          isToday && "bg-blue-600 text-white",
+                          !isToday && isHoliday && "text-amber-600 font-bold",
+                          !isToday && isExam && "text-red-600 font-bold"
                         )}
                       >
                         {format(day, "d")}
@@ -405,6 +446,18 @@ export default function CalendarPage() {
 
                       {/* Events indicators */}
                       <div className="flex flex-wrap gap-0.5">
+                        {/* Academic Events (Priority) */}
+                        {dayAcademicEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              event.event_type === 'exam' ? "bg-red-500" :
+                                event.event_type === 'holiday' ? "bg-amber-500" :
+                                  "bg-indigo-500"
+                            )}
+                          />
+                        ))}
                         {dayEvents.slice(0, 2).map((event) => (
                           <div
                             key={event.id}
@@ -419,9 +472,9 @@ export default function CalendarPage() {
                             style={{ backgroundColor: entry.color }}
                           />
                         ))}
-                        {dayEvents.length + dayTimetable.length > 4 && (
+                        {dayEvents.length + dayTimetable.length + dayAcademicEvents.length > 4 && (
                           <span className="text-[10px] text-slate-400">
-                            +{dayEvents.length + dayTimetable.length - 4}
+                            +
                           </span>
                         )}
                       </div>
@@ -453,8 +506,46 @@ export default function CalendarPage() {
               ) : (
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-4">
-                    {/* Timetable entries */}
-                    {selectedDayTimetable.length > 0 && (
+                    {/* Academic Events - Top Priority */}
+                    {selectedDayAcademicEvents.length > 0 && (
+                      <div>
+                        <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-indigo-500">
+                          Academic Calendar
+                        </h4>
+                        <div className="space-y-2">
+                          {selectedDayAcademicEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              className={cn(
+                                "flex items-start gap-4 rounded-lg border p-3",
+                                event.event_type === 'holiday' ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20" :
+                                  event.event_type === 'exam' ? "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20" :
+                                    "border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/20"
+                              )}
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-slate-900 dark:text-white">
+                                    {event.title}
+                                  </p>
+                                  <Badge variant="outline" className="text-[10px] uppercase">
+                                    {event.event_type.replace('_', ' ')}
+                                  </Badge>
+                                </div>
+                                {event.description && (
+                                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                    {event.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timetable entries (Only show if not holiday/exam/break) */}
+                    {selectedDayTimetable.length > 0 && !['HOLIDAY', 'EXAM_DAY', 'EXAM_BREAK', 'VACATION'].includes(academicState) && (
                       <div>
                         <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
                           Classes
@@ -528,7 +619,8 @@ export default function CalendarPage() {
                     )}
 
                     {selectedDayEvents.length === 0 &&
-                      selectedDayTimetable.length === 0 && (
+                      selectedDayTimetable.length === 0 &&
+                      selectedDayAcademicEvents.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <CalendarDays className="mb-2 h-10 w-10 text-slate-300" />
                           <p className="text-sm text-slate-500">

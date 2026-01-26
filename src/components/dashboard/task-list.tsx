@@ -13,12 +13,14 @@ import { cn } from "@/lib/utils";
 interface TaskListProps {
   maxItems?: number;
   showCard?: boolean;
+  suggestedTasks?: string[];
 }
 
-export function TaskList({ maxItems, showCard = false }: TaskListProps) {
+export function TaskList({ maxItems, showCard = false, suggestedTasks = [] }: TaskListProps) {
   const { tasks, isLoading, fetchTasks, addTask, deleteTask, toggleComplete } = useTaskStore();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     fetchTasks();
@@ -27,22 +29,36 @@ export function TaskList({ maxItems, showCard = false }: TaskListProps) {
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
+    await performAddTask(newTaskTitle.trim());
+    setNewTaskTitle("");
+  };
 
+  const performAddTask = async (title: string) => {
     setIsAdding(true);
     await addTask({
-      title: newTaskTitle.trim(),
+      title: title,
       description: null,
       is_completed: false,
       due_date: null,
       priority: null,
       linked_subject: null,
     });
-    setNewTaskTitle("");
     setIsAdding(false);
+  };
+
+  const handleDismissSuggestion = (title: string) => {
+    setDismissedSuggestions([...dismissedSuggestions, title]);
   };
 
   const pendingTasks = tasks.filter((t) => !t.is_completed);
   const completedTasks = tasks.filter((t) => t.is_completed);
+
+  // Filter suggestions: exclude if already exists in tasks or dismissed
+  const activeSuggestions = suggestedTasks.filter(
+    (suggestion) =>
+      !tasks.some((t) => t.title === suggestion) &&
+      !dismissedSuggestions.includes(suggestion)
+  );
 
   // Apply maxItems limit if specified
   const displayPendingTasks = maxItems ? pendingTasks.slice(0, maxItems) : pendingTasks;
@@ -50,6 +66,35 @@ export function TaskList({ maxItems, showCard = false }: TaskListProps) {
 
   const content = (
     <div className="space-y-4">
+      {/* Suggestions Section */}
+      {activeSuggestions.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <h4 className="text-xs font-semibold uppercase text-indigo-500">Suggested for you</h4>
+          {activeSuggestions.map((suggestion) => (
+            <div key={suggestion} className="flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/50 p-2 dark:border-indigo-900 dark:bg-indigo-950/30">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{suggestion}</span>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                  onClick={() => handleDismissSuggestion(suggestion)}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                  onClick={() => performAddTask(suggestion)}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Add task form */}
       <form onSubmit={handleAddTask} className="flex gap-2">
         <Input
@@ -73,7 +118,7 @@ export function TaskList({ maxItems, showCard = false }: TaskListProps) {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
-        ) : tasks.length === 0 ? (
+        ) : tasks.length === 0 && activeSuggestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <ListTodo className="mb-2 h-10 w-10 text-slate-300" />
             <p className="text-sm text-slate-500">No tasks yet</p>

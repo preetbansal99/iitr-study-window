@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * - PAUSED: Resume/Give Up buttons
  */
 
-export function FocusTimer() {
+export function FocusTimer({ suggestion }: { suggestion?: string }) {
   const {
     timerState,
     breakType,
@@ -118,7 +118,7 @@ export function FocusTimer() {
             Ready to Focus?
           </h3>
           <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-            {completedSessions} sessions completed today
+            {suggestion || `${completedSessions} sessions completed today`}
           </p>
 
           <Button

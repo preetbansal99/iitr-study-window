@@ -27,10 +27,15 @@ import {
   Moon,
   Sunset,
   Plus,
+  AlertCircle,
+  Coffee,
+  GraduationCap
 } from "lucide-react";
+import { differenceInDays, parseISO } from "date-fns";
 import { useUserStore } from "@/stores/user-store";
 import { createClient } from "@/lib/supabase/client";
-import type { TimetableEntry, Event } from "@/lib/types";
+import type { TimetableEntry, Event, AcademicEvent } from "@/lib/types";
+import { resolveAcademicDay, getTimetableDay } from "@/lib/academic-calendar";
 
 // Branch to course code mapping for personalized suggestions
 const BRANCH_COURSES: Record<string, string> = {
@@ -65,7 +70,10 @@ export default function DashboardPage() {
   // Real schedule data from Supabase
   const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
+  const [academicState, setAcademicState] = useState<string>("NORMAL_TEACHING_DAY");
+  const [timetableDayName, setTimetableDayName] = useState<string>("");
 
   // Fetch real schedule data
   useEffect(() => {
@@ -79,19 +87,46 @@ export default function DashboardPage() {
         return;
       }
 
-      // Get today's day of week (0 = Sunday, 6 = Saturday)
-      const today = new Date().getDay();
-
-      // Fetch today's timetable entries
-      const { data: timetableData } = await supabase
-        .from("timetable")
+      // 1. Fetch Academic Events first to determine day state
+      const { data: academicData } = await supabase
+        .from("academic_calendar_events")
         .select("*")
-        .eq("user_id", user.id)
-        .eq("day_of_week", today)
-        .order("start_time", { ascending: true });
+        .eq("semester", "Spring 2025-26");
 
-      // Fetch upcoming events (next 30 days)
-      const todayStr = new Date().toISOString().split("T")[0];
+      const allAcademicEvents = (academicData as AcademicEvent[]) || [];
+      setAcademicEvents(allAcademicEvents);
+
+      const todayDate = new Date();
+      const state = resolveAcademicDay(todayDate, allAcademicEvents);
+      setAcademicState(state);
+
+      // 2. Determine effective timetable day
+      let dayIndex = todayDate.getDay();
+
+      if (state === 'TIMETABLE_OVERRIDE_DAY') {
+        dayIndex = getTimetableDay(todayDate, allAcademicEvents);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        setTimetableDayName(days[dayIndex]);
+      } else if (state === 'HOLIDAY' || state === 'EXAM_DAY' || state === 'EXAM_BREAK' || state === 'VACATION') {
+        // No regular classes
+        dayIndex = -1;
+      }
+
+      // 3. Fetch today's timetable entries if it's a teaching day
+      if (dayIndex !== -1) {
+        const { data: timetableData } = await supabase
+          .from("timetable")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("day_of_week", dayIndex)
+          .order("start_time", { ascending: true });
+        setTodaySchedule(timetableData || []);
+      } else {
+        setTodaySchedule([]);
+      }
+
+      // 4. Fetch upcoming events (next 30 days) - Both Personal & Academic
+      const todayStr = todayDate.toISOString().split("T")[0];
       const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       const { data: eventsData } = await supabase
@@ -102,7 +137,6 @@ export default function DashboardPage() {
         .lte("date", futureDate)
         .order("date", { ascending: true });
 
-      setTodaySchedule(timetableData || []);
       setUpcomingEvents(eventsData || []);
       setIsLoadingSchedule(false);
     };
@@ -118,10 +152,165 @@ export default function DashboardPage() {
   // Get personalized course suggestion based on branch
   const suggestedCourse = profile?.branchName ? BRANCH_COURSES[profile.branchName as keyof typeof BRANCH_COURSES] : null;
 
-  // Encouraging message based on time of day
-  const encouragingMessage = suggestedCourse
-    ? `Let's focus on ${suggestedCourse} today.`
-    : "Ready to focus?";
+  // Encouraging message based on time of day and academic state
+  let encouragingMessage;
+  if (academicState === 'EXAM_DAY') {
+    encouragingMessage = "Good luck with your exams! Stay focused.";
+  } else if (academicState === 'HOLIDAY') {
+    encouragingMessage = "Enjoy your holiday! Take a well-deserved break.";
+  } else {
+    encouragingMessage = suggestedCourse
+      ? `Let's focus on ${suggestedCourse} today.`
+      : "Ready to focus?";
+  }
+
+  // Calculate Suggestions
+  const getSuggestions = () => {
+    const today = new Date();
+    let focusSuggestion = undefined;
+    const taskSuggestions: string[] = [];
+
+    // 1. Upcoming Exams check
+    const upcomingExams = academicEvents.filter(e =>
+      e.event_type === 'exam' &&
+      new Date(e.start_date) > today
+    ).sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+
+    if (upcomingExams.length > 0) {
+      const nextExam = upcomingExams[0];
+      const daysToExam = differenceInDays(parseISO(nextExam.start_date), today);
+
+      if (daysToExam <= 7 && daysToExam > 0) {
+        focusSuggestion = `${nextExam.title.split('(')[0].trim()} starts in ${daysToExam} days — plan focus sessions?`;
+        if (daysToExam <= 5) {
+          taskSuggestions.push(`Prepare for ${nextExam.title}`);
+        }
+      }
+    }
+
+    // 2. Feedback check
+    const activeFeedback = academicEvents.find(e =>
+      e.event_type === 'feedback' &&
+      new Date(e.start_date) <= today &&
+      new Date(e.end_date) >= today
+    );
+
+    if (activeFeedback) {
+      taskSuggestions.push(`Submit ${activeFeedback.title}`);
+    }
+
+    return { focusSuggestion, taskSuggestions };
+  };
+
+  const { focusSuggestion, taskSuggestions } = getSuggestions();
+
+
+  // Helper to render schedule content based on state
+  const renderScheduleContent = () => {
+    if (isLoadingSchedule) {
+      return (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (academicState === 'HOLIDAY') {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-center bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+          <Coffee className="h-10 w-10 text-amber-500 mb-3" />
+          <h3 className="text-lg font-semibold text-amber-700 dark:text-amber-400">No classes today</h3>
+          <p className="text-sm text-amber-600 dark:text-amber-500">
+            It&apos;s a holiday. Enjoy your time off!
+          </p>
+        </div>
+      );
+    }
+
+    if (academicState === 'EXAM_DAY') {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-center bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+          <AlertCircle className="h-10 w-10 text-red-500 mb-3" />
+          <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">Examination Day</h3>
+          <p className="text-sm text-red-600 dark:text-red-500">
+            Regular classes are suspended. Good luck!
+          </p>
+        </div>
+      );
+    }
+
+    if (academicState === 'EXAM_BREAK' || academicState === 'VACATION') {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-center bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+          <Coffee className="h-10 w-10 text-blue-500 mb-3" />
+          <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">Semester Break</h3>
+          <p className="text-sm text-blue-600 dark:text-blue-500">
+            No classes scheduled.
+          </p>
+        </div>
+      );
+    }
+
+    // Normal Teaching Day or Timetable Override
+    return (
+      <CardContent className="p-0">
+        {academicState === 'TIMETABLE_OVERRIDE_DAY' && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+            <AlertCircle className="h-4 w-4" />
+            <span>Timetable Override: Following <strong>{timetableDayName}</strong> schedule today.</span>
+          </div>
+        )}
+        {todaySchedule.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <CalendarDays className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+              No classes scheduled for today
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/timetable" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add to Timetable
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {todaySchedule.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <div
+                  className="h-14 w-1.5 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    {entry.subject_name}
+                  </p>
+                  <div className="flex items-center gap-3 text-sm text-slate-500">
+                    <span>{entry.type}</span>
+                    {entry.room_number && (
+                      <>
+                        <span>•</span>
+                        <span>{entry.room_number}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    {entry.start_time}
+                  </p>
+                  <p className="text-sm text-slate-500">{entry.end_time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    );
+  };
 
   return (
     <div className="p-4 lg:p-8">
@@ -169,7 +358,7 @@ export default function DashboardPage() {
 
           {/* Centered Timer */}
           <div className="mx-auto mb-10 max-w-md">
-            <FocusTimer />
+            <FocusTimer suggestion={focusSuggestion} />
           </div>
 
           {/* Things in Progress - Top 3 Only */}
@@ -197,7 +386,7 @@ export default function DashboardPage() {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <TaskList maxItems={3} />
+              <TaskList maxItems={3} suggestedTasks={taskSuggestions} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -215,64 +404,19 @@ export default function DashboardPage() {
 
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Today's Schedule */}
-            <Card className="rounded-xl border-border/50">
+            <Card className="rounded-xl border-border/50 transition-all">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CalendarDays className="h-5 w-5 text-blue-600" />
                   Today&apos;s Classes
                 </CardTitle>
-                <Badge variant="secondary">{todaySchedule.length} classes</Badge>
-              </CardHeader>
-              <CardContent>
-                {todaySchedule.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <CalendarDays className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                      No classes scheduled for today
-                    </p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="/timetable" className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add to Timetable
-                      </a>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {todaySchedule.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center gap-4 rounded-xl border border-border/50 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <div
-                          className="h-14 w-1.5 rounded-full"
-                          style={{ backgroundColor: entry.color }}
-                        />
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900 dark:text-white">
-                            {entry.subject_name}
-                          </p>
-                          <div className="flex items-center gap-3 text-sm text-slate-500">
-                            <span>{entry.type}</span>
-                            {entry.room_number && (
-                              <>
-                                <span>•</span>
-                                <span>{entry.room_number}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-slate-900 dark:text-white">
-                            {entry.start_time}
-                          </p>
-                          <p className="text-sm text-slate-500">{entry.end_time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {academicState === 'NORMAL_TEACHING_DAY' && (
+                  <Badge variant="secondary">{todaySchedule.length} classes</Badge>
                 )}
-              </CardContent>
+              </CardHeader>
+              <div className="px-6 pb-6">
+                {renderScheduleContent()}
+              </div>
             </Card>
 
             {/* Upcoming Events */}
