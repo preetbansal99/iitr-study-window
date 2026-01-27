@@ -327,6 +327,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             title: threadData.title,
             content: threadData.body,
             is_anonymous: threadData.isAnonymous,
+            tags: threadData.tags || [], // Ensure tags are sent, default to empty array
         };
 
         const { data, error } = await supabase
@@ -336,8 +337,8 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
             .single();
 
         if (error) {
-            console.error('Supabase error:', error);
-            throw new Error(`Failed to create thread: ${error.message}`);
+            console.error('Supabase error creating thread:', error);
+            throw new Error(`Failed to create thread: ${error.message} (Details: ${JSON.stringify(error)})`);
         }
 
         // Map to Thread interface for UI
