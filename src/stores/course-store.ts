@@ -9,9 +9,10 @@ interface CourseState {
     error: string | null;
 
     fetchCourses: (branch: string) => Promise<void>;
-    fetchResources: (courseId: string) => Promise<void>;
+    fetchResources: (courseCode: string) => Promise<void>;
     uploadResource: (
-        courseId: string,
+        courseId: string, // Keep for audit/lineage
+        courseCode: string, // Primary link
         resourceType: 'notes' | 'youtube' | 'code',
         title: string,
         content: { description?: string; fileUrl?: string; youtubeUrl?: string; codeContent?: string }
@@ -28,16 +29,38 @@ export const useCourseStore = create<CourseState>((set, get) => ({
         set({ isLoading: true, error: null });
         const supabase = createClient();
 
-        // Default to Electrical Engineering if branch is generic 'EE' or undefined
-        // Ideally this mapping belongs in a util, but fine here for now
-        const dbBranchName = branch === 'ee' || !branch ? 'Electrical Engineering' : branch;
+        // Map branch ID to Database Branch Name
+        let dbBranchName = branch;
+        if (branch === 'ee' || !branch) dbBranchName = 'Electrical Engineering';
+        else if (branch === 'ece') dbBranchName = 'Electronics & Communication Engineering';
+        else if (branch === 'cse') dbBranchName = 'Computer Science & Engineering';
 
+        // Join courses (curriculum) with master_courses (metadata)
         const { data, error } = await supabase
             .from('courses')
-            .select('*')
+            .select(`
+                id,
+                course_code,
+                semester,
+                course_type,
+                branch,
+                created_at,
+                master_courses (
+                    course_name,
+                    credits_min,
+                    credits_max,
+                    lecture_hours,
+                    tutorial_hours,
+                    practical_hours,
+                    cws_weightage,
+                    mte_weightage,
+                    ete_weightage,
+                    practical_weightage,
+                    pre_weightage
+                )
+            `)
             .eq('branch', dbBranchName)
-            .order('semester', { ascending: true })
-            .order('course_code', { ascending: true });
+            .order('semester', { ascending: true });
 
         if (error) {
             console.error('Error fetching courses:', error);
@@ -45,35 +68,55 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             return;
         }
 
-        set({ courses: data as Course[], isLoading: false });
+        // Flatten the data to match the Course Interface
+        const flattenedCourses: Course[] = data.map((item: any) => ({
+            id: item.id,
+            course_code: item.course_code,
+            semester: item.semester,
+            course_type: item.course_type,
+            branch: item.branch,
+            created_at: item.created_at,
+            // Master Data
+            course_name: item.master_courses?.course_name || 'Unknown Course',
+            credits_min: item.master_courses?.credits_min || 0,
+            credits_max: item.master_courses?.credits_max || 0,
+            lecture_hours: item.master_courses?.lecture_hours,
+            tutorial_hours: item.master_courses?.tutorial_hours,
+            practical_hours: item.master_courses?.practical_hours,
+            cws_weightage: item.master_courses?.cws_weightage,
+            mte_weightage: item.master_courses?.mte_weightage,
+            ete_weightage: item.master_courses?.ete_weightage,
+            practical_weightage: item.master_courses?.practical_weightage,
+            pre_weightage: item.master_courses?.pre_weightage,
+        }));
+
+        set({ courses: flattenedCourses, isLoading: false });
     },
 
-    fetchResources: async (courseId) => {
-        // specific loading state for resources? for now global isLoading
-        // set({ isLoading: true, error: null }); 
+    // FETCH BY COURSE CODE (Shared Resources)
+    fetchResources: async (courseCode) => {
         const supabase = createClient();
 
         const { data, error } = await supabase
             .from('course_resources')
             .select('*')
-            .eq('course_id', courseId)
+            .eq('course_code', courseCode) // Changed from course_id check
             .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching resources:', error);
-            // Don't block whole UI on resource fetch fail
             return;
         }
 
         set((state) => ({
             resources: {
                 ...state.resources,
-                [courseId]: data as CourseResource[],
+                [courseCode]: data as CourseResource[], // Keyed by Code
             },
         }));
     },
 
-    uploadResource: async (courseId, resourceType, title, content) => {
+    uploadResource: async (courseId, courseCode, resourceType, title, content) => {
         set({ isLoading: true, error: null });
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -83,11 +126,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             return false;
         }
 
-        // Explicit admin check is done by RLS, but we can fail early if we want.
-        // Relying on RLS is safer single source of truth.
-
         const payload = {
             course_id: courseId,
+            course_code: courseCode, // Added
             resource_type: resourceType,
             title: title,
             description: content.description,
@@ -107,8 +148,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             return false;
         }
 
-        // Refresh resources for this course
-        await get().fetchResources(courseId);
+        // Refresh resources for this course code
+        await get().fetchResources(courseCode);
         set({ isLoading: false });
         return true;
     }

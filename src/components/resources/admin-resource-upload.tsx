@@ -29,9 +29,10 @@ import { ADMIN_EMAIL } from "@/lib/supabase/client";
 
 interface AdminResourceUploadProps {
     courseId: string;
+    courseCode: string;
 }
 
-export function AdminResourceUpload({ courseId }: AdminResourceUploadProps) {
+export function AdminResourceUpload({ courseId, courseCode }: AdminResourceUploadProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,7 +68,7 @@ export function AdminResourceUpload({ courseId }: AdminResourceUploadProps) {
             codeContent: type === 'code' ? codeContent : undefined
         };
 
-        const success = await uploadResource(courseId, type, title, content);
+        const success = await uploadResource(courseId, courseCode, type, title, content);
 
         if (success) {
             toast.success("Resource uploaded successfully");

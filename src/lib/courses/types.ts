@@ -1,6 +1,6 @@
 export type CourseType = 'core' | 'elective' | 'OEC' | 'PEC' | 'MSC' | 'DHC';
 export type ResourceType = 'notes' | 'youtube' | 'code';
-export type BranchName = 'Electrical Engineering' | 'Electronics & Communication Engineering';
+export type BranchName = 'Electrical Engineering' | 'Electronics & Communication Engineering' | 'Computer Science & Engineering';
 
 export interface Course {
     id: string;

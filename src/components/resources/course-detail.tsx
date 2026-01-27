@@ -56,13 +56,14 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
     useEffect(() => {
         initialize(); // Community store channels
         fetchThreads(courseChannelId); // Course threads
-        if (course.id) {
-            fetchResources(course.id); // Course resources from Supabase
+        if (course.course_code) {
+            fetchResources(course.course_code); // Course resources from Supabase by CODE
         }
-    }, [initialize, fetchThreads, fetchResources, course.id, courseChannelId]);
+    }, [initialize, fetchThreads, fetchResources, course.course_code, courseChannelId]);
 
     // Get resources for this course
-    const courseResources = resources[course.id] || [];
+    const courseCode = course.course_code || "";
+    const courseResources = resources[courseCode] || [];
 
     return (
         <div className="space-y-6">
@@ -244,7 +245,7 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
                             <div className="flex gap-2">
                                 {/* Only show upload if admin - Permission check handled inside component too, but good to check here */}
                                 {userIsAdmin && (
-                                    <AdminResourceUpload courseId={course.id} />
+                                    <AdminResourceUpload courseId={course.id} courseCode={courseCode} />
                                 )}
                             </div>
                         </div>
