@@ -148,6 +148,85 @@ export function CourseDetail({ course, onBack }: CourseDetailProps) {
                                     </div>
                                 </div>
 
+                                {/* Academic Structure Section */}
+                                <div className="rounded-lg border bg-white p-4 dark:bg-slate-900">
+                                    <h3 className="mb-4 text-base font-semibold">Academic Structure & Evaluation</h3>
+
+                                    {/* L-T-P Breakdown */}
+                                    <div className="mb-6 grid grid-cols-3 gap-4 text-center">
+                                        <div className="rounded-lg bg-indigo-50 p-2 dark:bg-indigo-950/30">
+                                            <p className="text-xs text-slate-500 uppercase">Lecture</p>
+                                            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300">
+                                                {course.lecture_hours || 0}h
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg bg-indigo-50 p-2 dark:bg-indigo-950/30">
+                                            <p className="text-xs text-slate-500 uppercase">Tutorial</p>
+                                            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300">
+                                                {course.tutorial_hours || 0}h
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg bg-indigo-50 p-2 dark:bg-indigo-950/30">
+                                            <p className="text-xs text-slate-500 uppercase">Practical</p>
+                                            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300">
+                                                {course.practical_hours || 0}h
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Evaluation Weightage Table */}
+                                    <div className="overflow-hidden rounded-md border">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-slate-50 dark:bg-slate-800">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left font-medium text-slate-500">Component</th>
+                                                    <th className="px-3 py-2 text-right font-medium text-slate-500">Weightage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {course.cws_weightage && (
+                                                    <tr>
+                                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">Class Work (CWS)</td>
+                                                        <td className="px-3 py-2 text-right font-mono text-slate-900 dark:text-white">{course.cws_weightage}</td>
+                                                    </tr>
+                                                )}
+                                                {course.mte_weightage && (
+                                                    <tr>
+                                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">Mid Term Exam (MTE)</td>
+                                                        <td className="px-3 py-2 text-right font-mono text-slate-900 dark:text-white">{course.mte_weightage}</td>
+                                                    </tr>
+                                                )}
+                                                {course.ete_weightage && (
+                                                    <tr>
+                                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">End Term Exam (ETE)</td>
+                                                        <td className="px-3 py-2 text-right font-mono text-slate-900 dark:text-white">{course.ete_weightage}</td>
+                                                    </tr>
+                                                )}
+                                                {course.practical_weightage && (
+                                                    <tr>
+                                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">Practical (PRS)</td>
+                                                        <td className="px-3 py-2 text-right font-mono text-slate-900 dark:text-white">{course.practical_weightage}</td>
+                                                    </tr>
+                                                )}
+                                                {course.pre_weightage && (
+                                                    <tr>
+                                                        <td className="px-3 py-2 text-slate-700 dark:text-slate-300">Project Eval (PRE)</td>
+                                                        <td className="px-3 py-2 text-right font-mono text-slate-900 dark:text-white">{course.pre_weightage}</td>
+                                                    </tr>
+                                                )}
+                                                {/* Fallback if no weightage data */}
+                                                {!course.cws_weightage && !course.mte_weightage && !course.ete_weightage && !course.practical_weightage && !course.pre_weightage && (
+                                                    <tr>
+                                                        <td colSpan={2} className="px-3 py-4 text-center text-slate-400 italic">
+                                                            Evaluation schema not available
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                                 <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-400">
                                     Full syllabus details are available in the official curriculum document.
                                     {/* TODO: Add link later if available */}

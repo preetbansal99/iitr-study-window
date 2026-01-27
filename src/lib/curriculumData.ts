@@ -144,7 +144,7 @@ export const BRANCHES: Branch[] = [
     },
     {
         id: "ece",
-        name: "Electronics & Communication",
+        name: "Electronics & Communication Engineering",
         shortName: "ECE",
         icon: "Radio",
         semesters: ECE_CURRICULUM,

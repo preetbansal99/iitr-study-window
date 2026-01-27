@@ -1,6 +1,6 @@
-export type CourseType = 'core' | 'elective';
+export type CourseType = 'core' | 'elective' | 'OEC' | 'PEC' | 'MSC' | 'DHC';
 export type ResourceType = 'notes' | 'youtube' | 'code';
-export type BranchName = 'Electrical Engineering'; // Expandable later
+export type BranchName = 'Electrical Engineering' | 'Electronics & Communication Engineering';
 
 export interface Course {
     id: string;
@@ -11,6 +11,15 @@ export interface Course {
     credits_max: number;
     course_type: CourseType;
     branch: string;
+    // New Academic Metadata
+    lecture_hours?: number;
+    tutorial_hours?: number;
+    practical_hours?: number;
+    cws_weightage?: string;
+    mte_weightage?: string;
+    ete_weightage?: string;
+    practical_weightage?: string;
+    pre_weightage?: string;
     created_at: string;
 }
 

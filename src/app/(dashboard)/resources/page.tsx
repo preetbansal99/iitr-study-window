@@ -295,7 +295,7 @@ export default function ResourcesPage() {
         </div>
       )}
 
-      {/* Semester Selection */}
+      {/* Semester Selection & Header */}
       {selectedBranch && !selectedSemester && (
         <>
           {/* Branch Community Card */}
@@ -303,6 +303,7 @@ export default function ResourcesPage() {
             className="mb-6 group cursor-pointer border-2 border-transparent transition-all hover:border-purple-500 hover:shadow-lg"
             onClick={() => router.push(`/community`)}
           >
+            {/* ... existing card content ... */}
             <CardContent className="flex items-center gap-4 p-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-md transition-transform group-hover:scale-110">
                 <MessageCircle className="h-6 w-6 text-white" />
@@ -361,42 +362,70 @@ export default function ResourcesPage() {
 
       {/* Course Cards */}
       {selectedSemester && !selectedCourse && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {isLoading && <p>Loading courses...</p>}
-          {!isLoading && currentCourses.length === 0 && <p>No courses found for this semester.</p>}
+        <div className="space-y-6">
+          {/* Semester Credits Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between rounded-lg border bg-indigo-50 p-4 dark:bg-indigo-950/30">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Semester Overview</h2>
+              <p className="text-sm text-slate-500">Total Credits & Workload</p>
+            </div>
+            <div className="mt-2 md:mt-0 flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Credits</p>
+                <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                  {(() => {
+                    const minCredits = currentCourses.reduce((acc, c) => acc + c.credits_min, 0);
+                    const maxCredits = currentCourses.reduce((acc, c) => acc + c.credits_max, 0);
+                    return minCredits === maxCredits ? minCredits : `${minCredits} - ${maxCredits}`;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
 
-          {currentCourses.map((course) => (
-            <Card
-              key={course.id}
-              className="cursor-pointer transition-all hover:shadow-md hover:border-indigo-300"
-              onClick={() => setSelectedCourse(course)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <Badge variant="outline" className="text-xs font-mono">
-                    {course.course_code}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {course.credits_min === course.credits_max
-                      ? `${course.credits_min} Credits`
-                      : `${course.credits_min}-${course.credits_max} Credits`
-                    }
-                  </Badge>
-                </div>
-                <CardTitle className="mt-2 text-lg leading-tight">
-                  {course.course_name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <GraduationCap className="h-4 w-4" />
-                    <span className="capitalize">{course.course_type} Course</span>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {isLoading && <p>Loading courses...</p>}
+            {!isLoading && currentCourses.length === 0 && <p>No courses found for this semester.</p>}
+
+            {currentCourses.map((course) => (
+              <Card
+                key={course.id}
+                className="cursor-pointer transition-all hover:shadow-md hover:border-indigo-300 flex flex-col h-full"
+                onClick={() => setSelectedCourse(course)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <Badge variant="outline" className="text-xs font-mono">
+                      {course.course_code}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {course.credits_min === course.credits_max
+                        ? `${course.credits_min} Credits`
+                        : `${course.credits_min}-${course.credits_max} Credits`
+                      }
+                    </Badge>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <CardTitle className="mt-2 text-lg leading-tight line-clamp-2">
+                    {course.course_name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="mt-auto pt-2">
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4" />
+                      <span className="capitalize">{course.course_type}</span>
+                    </div>
+                    {/* L-T-P Display */}
+                    {(course.lecture_hours !== undefined || course.tutorial_hours !== undefined || course.practical_hours !== undefined) && (
+                      <div className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                        L-T-P: {course.lecture_hours || 0}-{course.tutorial_hours || 0}-{course.practical_hours || 0}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
