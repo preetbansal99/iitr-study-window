@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,11 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BRANCHES, getSemesterCourses, getTotalCredits, type Branch, type Course } from "@/lib/curriculumData";
-import { CourseDetail } from "@/components/resources/course-detail";
+import { useCourseStore } from "@/stores/course-store";
+import { Course } from "@/lib/courses/types";
+import { CourseDetail as CourseDetailComponent } from "@/components/resources/course-detail";
 import { ClubsGrid } from "@/components/resources/clubs-grid";
+import { BRANCHES } from "@/lib/curriculumData";
 
 // Dynamic icon component
 const BranchIcon = ({ iconName, className }: { iconName: string; className?: string }) => {
@@ -37,26 +39,34 @@ type ViewState = "gateway" | "academic" | "clubs";
 
 export default function ResourcesPage() {
   const router = useRouter();
+  const { courses, fetchCourses, isLoading } = useCourseStore();
+
   const [view, setView] = useState<ViewState>("gateway");
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-  // Get current branch data
+  // Get current branch data (using old constant for metadata like icon/shortName)
   const currentBranch = selectedBranch
     ? BRANCHES.find((b) => b.id === selectedBranch)
     : null;
 
-  // Get current courses
-  const currentCourses = selectedBranch && selectedSemester
-    ? getSemesterCourses(selectedBranch, selectedSemester)
-    : [];
+  // Filter courses from store
+  const currentCourses = courses.filter(c => c.semester === selectedSemester);
+
+  // Fetch courses when branch is selected
+  useEffect(() => {
+    if (selectedBranch) {
+      fetchCourses(selectedBranch);
+    }
+  }, [selectedBranch, fetchCourses]);
 
   // Navigation handlers
   const goToGateway = () => {
     setView("gateway");
     setSelectedBranch(null);
     setSelectedSemester(null);
+    setSelectedCourse(null);
   };
 
   const goToAcademic = () => {
@@ -110,7 +120,7 @@ export default function ResourcesPage() {
 
     if (selectedCourse) {
       items.push({
-        label: selectedCourse.title,
+        label: selectedCourse.course_name,
       });
     }
 
@@ -154,10 +164,10 @@ export default function ResourcesPage() {
             </CardContent>
           </Card>
 
-          {/* General Community Card - NEW */}
+          {/* General Community Card */}
           <Card
             className="group cursor-pointer border-2 border-transparent transition-all hover:border-purple-500 hover:shadow-xl"
-            onClick={() => router.push("/resources/community")}
+            onClick={() => router.push("/community")}
           >
             <CardContent className="flex flex-col items-center p-8 text-center">
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg transition-transform group-hover:scale-110">
@@ -250,7 +260,9 @@ export default function ResourcesPage() {
           </h1>
           <p className="mt-1 text-slate-600 dark:text-slate-400">
             {selectedSemester
-              ? `${currentCourses.length} courses • ${getTotalCredits(currentCourses)} credits`
+              ? isLoading
+                ? "Loading courses..."
+                : `${currentCourses.length} courses`
               : selectedBranch
                 ? "Select your semester"
                 : "Select your branch"}
@@ -286,10 +298,10 @@ export default function ResourcesPage() {
       {/* Semester Selection */}
       {selectedBranch && !selectedSemester && (
         <>
-          {/* Branch Community Card - NEW */}
+          {/* Branch Community Card */}
           <Card
             className="mb-6 group cursor-pointer border-2 border-transparent transition-all hover:border-purple-500 hover:shadow-lg"
-            onClick={() => router.push(`/resources/${selectedBranch}/community`)}
+            onClick={() => router.push(`/community`)}
           >
             <CardContent className="flex items-center gap-4 p-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-md transition-transform group-hover:scale-110">
@@ -300,7 +312,7 @@ export default function ResourcesPage() {
                   {currentBranch?.shortName} Community
                 </h3>
                 <p className="text-sm text-slate-500">
-                  Connect with peers, ask doubts, share resources
+                  Join the {currentBranch?.name} discussion channel
                 </p>
               </div>
               <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
@@ -310,9 +322,10 @@ export default function ResourcesPage() {
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((sem) => {
-              const courses = getSemesterCourses(selectedBranch, sem);
-              const credits = getTotalCredits(courses);
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => {
+              // Calculate stats if courses are loaded for this branch
+              const semCourses = courses.filter(c => c.semester === sem);
+
               return (
                 <Card
                   key={sem}
@@ -327,14 +340,16 @@ export default function ResourcesPage() {
                       Semester {sem}
                     </h3>
                     <div className="mt-2 flex items-center gap-3 text-sm text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        {courses.length} courses
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {credits} credits
-                      </span>
+                      {semCourses.length > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="h-3.5 w-3.5" />
+                          {semCourses.length} courses
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 italic text-slate-400">
+                          view courses
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -347,36 +362,37 @@ export default function ResourcesPage() {
       {/* Course Cards */}
       {selectedSemester && !selectedCourse && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {isLoading && <p>Loading courses...</p>}
+          {!isLoading && currentCourses.length === 0 && <p>No courses found for this semester.</p>}
+
           {currentCourses.map((course) => (
             <Card
-              key={course.code}
+              key={course.id}
               className="cursor-pointer transition-all hover:shadow-md hover:border-indigo-300"
               onClick={() => setSelectedCourse(course)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
-                  <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
-                    {course.code}
+                  <Badge variant="outline" className="text-xs font-mono">
+                    {course.course_code}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {course.credits} Credits
+                  <Badge variant="secondary" className="text-xs">
+                    {course.credits_min === course.credits_max
+                      ? `${course.credits_min} Credits`
+                      : `${course.credits_min}-${course.credits_max} Credits`
+                    }
                   </Badge>
                 </div>
                 <CardTitle className="mt-2 text-lg leading-tight">
-                  {course.title}
+                  {course.course_name}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <GraduationCap className="h-4 w-4" />
-                    <span>{course.type === "core" ? "Core Course" : "Elective"}</span>
+                    <span className="capitalize">{course.course_type} Course</span>
                   </div>
-                  {course.chapters && course.chapters.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {course.chapters.length} Chapters
-                    </Badge>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -386,7 +402,7 @@ export default function ResourcesPage() {
 
       {/* Course Detail View */}
       {selectedCourse && (
-        <CourseDetail
+        <CourseDetailComponent
           course={selectedCourse}
           onBack={() => setSelectedCourse(null)}
         />

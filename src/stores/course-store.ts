@@ -1,235 +1,115 @@
-"use client";
+import { create } from 'zustand';
+import { createClient } from '@/lib/supabase/client';
+import type { Course, CourseResource } from '@/lib/courses/types';
 
-import { create } from "zustand";
-import { createClient } from "@/lib/supabase/client";
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface CourseResource {
-    id: string;
-    course_code: string;
-    title: string;
-    url: string;
-    category: 'video' | 'notes' | 'archive' | 'document' | 'pyp';
-    description?: string;
-    added_by: string; // email
-    created_at: string;
-    // JSONB or specific columns for metadata
-    year?: string;
-    exam_type?: 'MTE' | 'ETE' | 'Quiz';
-    batch?: string;
-}
-
-export interface CourseChapter {
-    id: string;
-    course_code: string;
-    title: string;
-    topics: string[]; // Stored as array in Supabase (text[])
-}
-
-export interface CourseData {
-    code: string;
-    overview: string;
-    chapters: CourseChapter[];
-    resources: CourseResource[];
-}
-
-interface CourseStoreState {
-    // Current active course data
-    currentCourse: CourseData | null;
+interface CourseState {
+    courses: Course[];
+    resources: Record<string, CourseResource[]>; // Map courseId -> resources
     isLoading: boolean;
     error: string | null;
 
-    // Actions
-    fetchCourseData: (courseCode: string) => Promise<void>;
-
-    // Overview
-    updateOverview: (courseCode: string, overview: string) => Promise<void>;
-
-    // Chapters
-    addChapter: (courseCode: string, title: string, topics: string[]) => Promise<void>;
-    deleteChapter: (chapterId: string) => Promise<void>;
-
-    // Resources
-    addResource: (courseCode: string, resource: Omit<CourseResource, 'id' | 'course_code' | 'created_at' | 'added_by'>) => Promise<void>;
-    deleteResource: (resourceId: string) => Promise<void>;
+    fetchCourses: (branch: string) => Promise<void>;
+    fetchResources: (courseId: string) => Promise<void>;
+    uploadResource: (
+        courseId: string,
+        resourceType: 'notes' | 'youtube' | 'code',
+        title: string,
+        content: { description?: string; fileUrl?: string; youtubeUrl?: string; codeContent?: string }
+    ) => Promise<boolean>;
 }
 
-export const useCourseStore = create<CourseStoreState>((set, get) => ({
-    currentCourse: null,
+export const useCourseStore = create<CourseState>((set, get) => ({
+    courses: [],
+    resources: {},
     isLoading: false,
     error: null,
 
-    fetchCourseData: async (courseCode: string) => {
+    fetchCourses: async (branch) => {
         set({ isLoading: true, error: null });
         const supabase = createClient();
 
-        try {
-            // 1. Fetch Course Info (Overview)
-            // Assuming 'courses' table exists: code (PK), overview
-            const { data: course, error: courseError } = await supabase
-                .from('courses')
-                .select('overview')
-                .eq('code', courseCode)
-                .single();
+        // Default to Electrical Engineering if branch is generic 'EE' or undefined
+        // Ideally this mapping belongs in a util, but fine here for now
+        const dbBranchName = branch === 'ee' || !branch ? 'Electrical Engineering' : branch;
 
-            if (courseError && courseError.code !== 'PGRST116') { // Ignore not found, treat as empty
-                throw courseError;
-            }
-
-            // 2. Fetch Chapters
-            const { data: chapters, error: chaptersError } = await supabase
-                .from('chapters')
-                .select('*')
-                .eq('course_code', courseCode)
-                .order('created_at', { ascending: true });
-
-            if (chaptersError) throw chaptersError;
-
-            // 3. Fetch Resources
-            const { data: resources, error: resourcesError } = await supabase
-                .from('resources')
-                .select('*')
-                .eq('course_code', courseCode)
-                .order('created_at', { ascending: false });
-
-            if (resourcesError) throw resourcesError;
-
-            set({
-                currentCourse: {
-                    code: courseCode,
-                    overview: course?.overview || '',
-                    chapters: chapters || [],
-                    resources: resources || [],
-                },
-                isLoading: false
-            });
-
-        } catch (error: any) {
-            console.error('Error fetching course data:', error);
-            set({ error: error.message, isLoading: false });
-        }
-    },
-
-    updateOverview: async (courseCode: string, overview: string) => {
-        const supabase = createClient();
-        // Optimistic update
-        const prev = get().currentCourse;
-        if (prev) {
-            set({ currentCourse: { ...prev, overview } });
-        }
-
-        const { error } = await supabase
-            .from('courses')
-            .upsert({ code: courseCode, overview }, { onConflict: 'code' });
-
-        if (error) {
-            console.error('Error updating overview:', error);
-            if (prev) set({ currentCourse: prev }); // Revert
-        }
-    },
-
-    addChapter: async (courseCode: string, title: string, topics: string[]) => {
-        const supabase = createClient();
-
-        // Optimistic update? No, let's wait for ID from DB for cleaner state
         const { data, error } = await supabase
-            .from('chapters')
-            .insert({
-                course_code: courseCode,
-                title,
-                topics
-            })
-            .select()
-            .single();
+            .from('courses')
+            .select('*')
+            .eq('branch', dbBranchName)
+            .order('semester', { ascending: true })
+            .order('course_code', { ascending: true });
 
         if (error) {
-            console.error('Error adding chapter:', error);
+            console.error('Error fetching courses:', error);
+            set({ isLoading: false, error: error.message });
             return;
         }
 
-        const current = get().currentCourse;
-        if (current && data) {
-            set({
-                currentCourse: {
-                    ...current,
-                    chapters: [...current.chapters, data]
-                }
-            });
-        }
+        set({ courses: data as Course[], isLoading: false });
     },
 
-    deleteChapter: async (chapterId: string) => {
+    fetchResources: async (courseId) => {
+        // specific loading state for resources? for now global isLoading
+        // set({ isLoading: true, error: null }); 
         const supabase = createClient();
-        const { error } = await supabase.from('chapters').delete().eq('id', chapterId);
+
+        const { data, error } = await supabase
+            .from('course_resources')
+            .select('*')
+            .eq('course_id', courseId)
+            .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Error deleting chapter:', error);
+            console.error('Error fetching resources:', error);
+            // Don't block whole UI on resource fetch fail
             return;
         }
 
-        const current = get().currentCourse;
-        if (current) {
-            set({
-                currentCourse: {
-                    ...current,
-                    chapters: current.chapters.filter(c => c.id !== chapterId)
-                }
-            });
-        }
+        set((state) => ({
+            resources: {
+                ...state.resources,
+                [courseId]: data as CourseResource[],
+            },
+        }));
     },
 
-    addResource: async (courseCode: string, resourceData) => {
+    uploadResource: async (courseId, resourceType, title, content) => {
+        set({ isLoading: true, error: null });
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser(); // Get current user email for added_by
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            set({ isLoading: false, error: "Must be logged in" });
+            return false;
+        }
+
+        // Explicit admin check is done by RLS, but we can fail early if we want.
+        // Relying on RLS is safer single source of truth.
 
         const payload = {
-            course_code: courseCode,
-            ...resourceData,
-            added_by: user?.email || 'anonymous',
+            course_id: courseId,
+            resource_type: resourceType,
+            title: title,
+            description: content.description,
+            file_url: content.fileUrl,
+            youtube_url: content.youtubeUrl,
+            code_content: content.codeContent,
+            uploaded_by: user.id
         };
 
-        const { data, error } = await supabase
-            .from('resources')
-            .insert(payload)
-            .select()
-            .single();
+        const { error } = await supabase
+            .from('course_resources')
+            .insert(payload);
 
         if (error) {
-            console.error('Error adding resource:', error);
-            return;
+            console.error('Error uploading resource:', error);
+            set({ isLoading: false, error: error.message });
+            return false;
         }
 
-        const current = get().currentCourse;
-        if (current && data) {
-            set({
-                currentCourse: {
-                    ...current,
-                    resources: [data, ...current.resources]
-                }
-            });
-        }
-    },
-
-    deleteResource: async (resourceId: string) => {
-        const supabase = createClient();
-        const { error } = await supabase.from('resources').delete().eq('id', resourceId);
-
-        if (error) {
-            console.error('Error deleting resource:', error);
-            return;
-        }
-
-        const current = get().currentCourse;
-        if (current) {
-            set({
-                currentCourse: {
-                    ...current,
-                    resources: current.resources.filter(r => r.id !== resourceId)
-                }
-            });
-        }
+        // Refresh resources for this course
+        await get().fetchResources(courseId);
+        set({ isLoading: false });
+        return true;
     }
 }));

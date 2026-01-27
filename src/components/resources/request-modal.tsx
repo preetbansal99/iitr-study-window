@@ -10,7 +10,6 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -26,16 +25,16 @@ import { useUserStore } from "@/stores/user-store";
 import { Loader2, CheckCircle2, FileQuestion } from "lucide-react";
 
 interface RequestModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    courseCode: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    courseId: string;
     courseName: string;
 }
 
 export function RequestResourceModal({
-    isOpen,
-    onClose,
-    courseCode,
+    open,
+    onOpenChange,
+    courseId,
     courseName,
 }: RequestModalProps) {
     const { submitRequest } = useRequestStore();
@@ -55,7 +54,7 @@ export function RequestResourceModal({
 
         // Submit request
         submitRequest({
-            courseCode,
+            courseCode: courseId, // Using ID or Code as the identifier
             courseName,
             requestType,
             description: description.trim(),
@@ -66,7 +65,7 @@ export function RequestResourceModal({
 
         setIsSuccess(true);
         setTimeout(() => {
-            onClose();
+            onOpenChange(false);
             // Reset form
             setDescription("");
             setRequestType("notes");
@@ -77,15 +76,15 @@ export function RequestResourceModal({
         setIsSubmitting(false);
     };
 
-    const handleClose = () => {
-        if (!isSubmitting) {
-            onClose();
+    const handleClose = (isOpen: boolean) => {
+        if (!isOpen && !isSubmitting) {
+            onOpenChange(false);
             setIsSuccess(false);
         }
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
+        <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-md">
                 {isSuccess ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -168,7 +167,7 @@ export function RequestResourceModal({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={handleClose}
+                                    onClick={() => onOpenChange(false)}
                                     disabled={isSubmitting}
                                 >
                                     Cancel
