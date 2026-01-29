@@ -39,15 +39,15 @@ function ParticleBackground() {
     resize();
     window.addEventListener("resize", resize);
 
-    // Colors matching Antigravity aesthetic
+    // Colors matching Antigravity aesthetic (no purple)
     const colors = [
       "#4285F4", // Blue
-      "#8B5CF6", // Purple
-      "#EC4899", // Pink
-      "#EF4444", // Red
-      "#F97316", // Orange
-      "#FBBF24", // Yellow
+      "#60A5FA", // Light Blue
+      "#3B82F6", // Bright Blue
+      "#0EA5E9", // Sky Blue
       "#10B981", // Green
+      "#FBBF24", // Yellow
+      "#F97316", // Orange
     ];
 
     // Initialize particles
@@ -128,7 +128,7 @@ function TypingText({ text, className }: { text: string; className?: string }) {
   const [cursorVisible, setCursorVisible] = useState(true);
   const [cursorColor, setCursorColor] = useState("#4285F4");
 
-  const cursorColors = ["#4285F4", "#8B5CF6", "#EC4899", "#EF4444", "#F97316"];
+  const cursorColors = ["#4285F4", "#60A5FA", "#3B82F6", "#0EA5E9", "#10B981"];
 
   useEffect(() => {
     let index = 0;
@@ -216,7 +216,7 @@ function Header() {
                 gradientUnits="userSpaceOnUse"
               >
                 <stop stopColor="#4285F4" />
-                <stop offset="1" stopColor="#8B5CF6" />
+                <stop offset="1" stopColor="#0EA5E9" />
               </linearGradient>
             </defs>
           </svg>

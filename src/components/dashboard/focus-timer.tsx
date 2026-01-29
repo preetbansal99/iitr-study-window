@@ -97,7 +97,7 @@ export function FocusTimer({ suggestion }: { suggestion?: string }) {
       label: timerState === "paused" ? "Paused" : "Focus Time",
       color: "text-indigo-600 dark:text-indigo-400",
       bgColor: "bg-indigo-50 dark:bg-indigo-950/50",
-      ringColor: "stroke-indigo-500",
+      ringColor: "stroke-[#4285F4]",
       icon: Brain,
     };
   };
@@ -108,9 +108,9 @@ export function FocusTimer({ suggestion }: { suggestion?: string }) {
   // IDLE State UI
   if (timerState === "idle") {
     return (
-      <Card className="overflow-hidden border-0 bg-gradient-to-br from-indigo-50 to-violet-50 shadow-lg dark:from-indigo-950/30 dark:to-violet-950/30">
+      <Card className="overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-sky-50 shadow-lg dark:from-blue-950/30 dark:to-sky-950/30">
         <CardContent className="flex flex-col items-center py-12">
-          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#4285F4] to-[#0EA5E9] shadow-lg">
             <Brain className="h-12 w-12 text-white" />
           </div>
 
@@ -123,7 +123,7 @@ export function FocusTimer({ suggestion }: { suggestion?: string }) {
 
           <Button
             size="lg"
-            className="h-14 gap-3 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-8 text-lg font-semibold shadow-lg transition-all hover:from-indigo-700 hover:to-violet-700 hover:shadow-xl"
+            className="h-14 gap-3 rounded-full bg-gradient-to-r from-[#4285F4] to-[#0EA5E9] px-8 text-lg font-semibold shadow-lg transition-all hover:from-[#3B82F6] hover:to-[#06B6D4] hover:shadow-xl hover:scale-[1.03] active:scale-[0.96]"
             onClick={() => startFocus()}
           >
             <Play className="h-6 w-6" />

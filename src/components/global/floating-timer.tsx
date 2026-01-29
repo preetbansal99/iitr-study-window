@@ -85,10 +85,10 @@ export function FloatingTimer() {
     // Color based on state
     const getStateColor = () => {
         if (timerState === "break") {
-            return breakType === "long" ? "bg-violet-600" : "bg-emerald-600";
+            return breakType === "long" ? "bg-[#0EA5E9]" : "bg-emerald-600";
         }
         if (timerState === "paused") return "bg-orange-500";
-        return "bg-indigo-600";
+        return "bg-[#4285F4]";
     };
 
     const getStateIcon = () => {
@@ -175,7 +175,7 @@ export function FloatingTimer() {
                     <div className="p-4">
                         <div className="mb-4 flex items-center justify-between">
                             <h4 className="font-semibold text-slate-900 dark:text-white">Session History</h4>
-                            <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                            <Badge variant="secondary" className="bg-blue-100 text-[#4285F4]">
                                 <Clock className="mr-1 h-3 w-3" />
                                 {Math.floor(todayFocusMinutes / 60)}h {todayFocusMinutes % 60}m today
                             </Badge>
@@ -261,7 +261,7 @@ export function FloatingTimer() {
                                     <div>
                                         <div className="mb-1.5 flex items-center justify-between">
                                             <label className="text-xs font-medium text-slate-500">Duration</label>
-                                            <span className="text-sm font-semibold text-indigo-600">{customDuration} min</span>
+                                            <span className="text-sm font-semibold text-[#4285F4]">{customDuration} min</span>
                                         </div>
                                         <Slider
                                             value={[customDuration]}
@@ -278,7 +278,7 @@ export function FloatingTimer() {
 
                                     {/* Start Button */}
                                     <Button
-                                        className="w-full gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700"
+                                        className="w-full gap-2 bg-gradient-to-r from-[#4285F4] to-[#0EA5E9] hover:from-[#3B82F6] hover:to-[#06B6D4] hover:scale-[1.03] active:scale-[0.96]"
                                         onClick={() => startFocus(linkedTaskName || undefined)}
                                     >
                                         <Play className="h-4 w-4" />
@@ -314,7 +314,7 @@ export function FloatingTimer() {
                                         <X className="h-4 w-4" />
                                         Give Up
                                     </Button>
-                                    <Button className="flex-1 gap-2 bg-indigo-600 hover:bg-indigo-700" onClick={resumeTimer}>
+                                    <Button className="flex-1 gap-2 bg-[#4285F4] hover:bg-[#3B82F6]" onClick={resumeTimer}>
                                         <Play className="h-4 w-4" />
                                         Resume
                                     </Button>
@@ -333,7 +333,7 @@ export function FloatingTimer() {
                             {/* Linked Task Display */}
                             {linkedTaskName && isActive && (
                                 <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-800">
-                                    <Target className="h-4 w-4 text-indigo-500" />
+                                    <Target className="h-4 w-4 text-[#4285F4]" />
                                     <span className="truncate text-sm text-slate-600 dark:text-slate-300">
                                         {linkedTaskName}
                                     </span>

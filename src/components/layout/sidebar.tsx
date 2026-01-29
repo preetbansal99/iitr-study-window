@@ -79,7 +79,7 @@ function AntigravityLogo() {
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="#4285F4" />
-          <stop offset="1" stopColor="#8B5CF6" />
+          <stop offset="1" stopColor="#0EA5E9" />
         </linearGradient>
       </defs>
     </svg>
