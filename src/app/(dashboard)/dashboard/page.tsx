@@ -369,91 +369,115 @@ export default function DashboardPage() {
 
         {/* ==================== FOCUS TAB ==================== */}
         <TabsContent value="focus" className="mt-0">
-          {/* Zen Header */}
-          <div className="mb-10 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 dark:bg-indigo-950">
-              <GreetingIcon className="h-5 w-5 text-indigo-600" />
-              <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+          {/* Hero Section - Full width, centered, spacious */}
+          <section className="mb-16 text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#F0F4F9] px-5 py-2.5 dark:bg-slate-800">
+              <GreetingIcon className="h-5 w-5 text-[#4285F4]" />
+              <span className="text-sm font-medium text-[#131314] dark:text-white">
                 {greeting.text}
               </span>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white lg:text-4xl">
+            <h1 className="text-4xl font-semibold tracking-tight text-[#131314] dark:text-white lg:text-5xl">
               {greeting.text}, {displayName}!
             </h1>
-            <p className="mt-2 text-lg text-slate-500">{encouragingMessage}</p>
-          </div>
+            <p className="mx-auto mt-4 max-w-lg text-lg text-slate-500">
+              {encouragingMessage}
+            </p>
+          </section>
 
-          {/* Centered Timer */}
-          <div className="mx-auto mb-10 max-w-md">
+          {/* Centered Timer Section */}
+          <section className="mx-auto mb-16 max-w-lg">
             <FocusTimer suggestion={focusSuggestion} />
-          </div>
+          </section>
 
-          {/* Things in Progress - Top 3 Only */}
-          <Card className="rounded-xl border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Clock className="h-5 w-5 text-orange-600" />
-                Things in Progress
-              </CardTitle>
-              <Dialog open={showAllTasks} onOpenChange={setShowAllTasks}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1 text-indigo-600">
-                    View All
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>All Tasks</DialogTitle>
-                  </DialogHeader>
-                  <div className="max-h-96 overflow-y-auto">
-                    <TaskList />
+          {/* Tasks Section - Clean card with horizontal action buttons */}
+          <section className="mx-auto max-w-3xl">
+            <Card className="overflow-hidden rounded-2xl border-0 bg-[#F0F4F9]/50 shadow-sm dark:bg-slate-900">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200/60 pb-4 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4285F4]/10">
+                    <Clock className="h-5 w-5 text-[#4285F4]" />
                   </div>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              <TaskList maxItems={3} suggestedTasks={taskSuggestions} />
-            </CardContent>
-          </Card>
+                  <CardTitle className="text-xl font-semibold text-[#131314] dark:text-white">
+                    Things in Progress
+                  </CardTitle>
+                </div>
+                {/* Horizontal action buttons */}
+                <div className="flex items-center gap-2">
+                  <Dialog open={showAllTasks} onOpenChange={setShowAllTasks}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="antigravity-secondary"
+                        size="sm"
+                        className="gap-1.5"
+                      >
+                        View All
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>All Tasks</DialogTitle>
+                      </DialogHeader>
+                      <div className="max-h-96 overflow-y-auto">
+                        <TaskList />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <TaskList maxItems={3} suggestedTasks={taskSuggestions} />
+              </CardContent>
+            </Card>
+          </section>
         </TabsContent>
 
         {/* ==================== SCHEDULE TAB ==================== */}
         <TabsContent value="schedule" className="mt-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white lg:text-3xl">
+          {/* Centered Hero Header */}
+          <section className="mb-12 text-center">
+            <h1 className="text-4xl font-semibold tracking-tight text-[#131314] dark:text-white lg:text-5xl">
               Your Schedule
             </h1>
-            <p className="mt-1 text-slate-600 dark:text-slate-400">
+            <p className="mx-auto mt-4 max-w-lg text-lg text-slate-500">
               Plan your time and manage events
             </p>
-          </div>
+          </section>
 
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="mx-auto max-w-5xl grid gap-8 lg:grid-cols-2">
             {/* Today's Schedule */}
-            <Card className="rounded-xl border-border/50 transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CalendarDays className="h-5 w-5 text-blue-600" />
-                  Today&apos;s Classes
-                </CardTitle>
+            <Card className="overflow-hidden rounded-2xl border-0 bg-[#F0F4F9]/50 shadow-sm dark:bg-slate-900">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200/60 pb-4 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4285F4]/10">
+                    <CalendarDays className="h-5 w-5 text-[#4285F4]" />
+                  </div>
+                  <CardTitle className="text-xl font-semibold text-[#131314] dark:text-white">
+                    Today&apos;s Classes
+                  </CardTitle>
+                </div>
                 {academicState === 'NORMAL_TEACHING_DAY' && (
-                  <Badge variant="secondary">{todaySchedule.length} classes</Badge>
+                  <Badge variant="secondary" className="bg-[#4285F4]/10 text-[#4285F4]">{todaySchedule.length} classes</Badge>
                 )}
               </CardHeader>
-              <div className="px-6 pb-6">
+              <div className="p-6">
                 {renderScheduleContent()}
               </div>
             </Card>
 
             {/* Upcoming Events */}
-            <Card className="rounded-xl border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BookOpen className="h-5 w-5 text-purple-600" />
-                  Upcoming Events
-                </CardTitle>
-                <Badge variant="secondary">{upcomingEvents.length} events</Badge>
+            <Card className="overflow-hidden rounded-2xl border-0 bg-[#F0F4F9]/50 shadow-sm dark:bg-slate-900">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200/60 pb-4 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4285F4]/10">
+                    <BookOpen className="h-5 w-5 text-[#4285F4]" />
+                  </div>
+                  <CardTitle className="text-xl font-semibold text-[#131314] dark:text-white">
+                    Upcoming Events
+                  </CardTitle>
+                </div>
+                <Badge variant="secondary" className="bg-[#4285F4]/10 text-[#4285F4]">{upcomingEvents.length} events</Badge>
               </CardHeader>
               <CardContent>
                 {upcomingEvents.length === 0 ? (
@@ -520,16 +544,19 @@ export default function DashboardPage() {
 
         {/* ==================== INSIGHTS TAB ==================== */}
         <TabsContent value="insights" className="mt-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white lg:text-3xl">
+          {/* Centered Hero Header */}
+          <section className="mb-12 text-center">
+            <h1 className="text-4xl font-semibold tracking-tight text-[#131314] dark:text-white lg:text-5xl">
               Your Insights
             </h1>
-            <p className="mt-1 text-slate-600 dark:text-slate-400">
+            <p className="mx-auto mt-4 max-w-lg text-lg text-slate-500">
               Track your progress and performance
             </p>
-          </div>
+          </section>
 
-          <ProgressTracker />
+          <div className="mx-auto max-w-5xl">
+            <ProgressTracker />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
