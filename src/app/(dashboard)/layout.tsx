@@ -12,7 +12,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      {/* Antigravity-style background vignette */}
+      <div
+        className="fixed inset-0 -z-10 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse at center, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 50%, rgba(66, 133, 244, 0.05) 100%)
+          `,
+        }}
+      />
       {isDemoMode && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 px-4 py-1 text-center text-sm font-medium text-amber-950">
           🚧 Demo Mode - Configure Supabase credentials to enable full functionality
