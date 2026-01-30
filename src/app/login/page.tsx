@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, CheckCircle2, Info, BookOpen, Users, Clock, Shield, Mail, ChevronRight } from "lucide-react";
+import { Loader2, CheckCircle2, Mail, ChevronRight } from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
 
 // ============================================
@@ -305,111 +305,6 @@ function TypingText({ text, className }: { text: string; className?: string }) {
 }
 
 // ============================================
-// FEATURE CARD COMPONENT WITH TOOLTIP
-// ============================================
-function FeatureCard({ icon: Icon, title, description, details }: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  details: string[];
-}) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  return (
-    <div
-      className="group relative flex flex-col items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-sm p-6 text-center transition-all duration-300 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:-translate-y-1"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      {/* Info Icon */}
-      <button
-        className="absolute top-3 right-3 text-slate-400 hover:text-[#4285F4] transition-colors"
-        onClick={() => setShowTooltip(!showTooltip)}
-        aria-label="More information"
-      >
-        <Info className="h-4 w-4" />
-      </button>
-
-      {/* Tooltip */}
-      {showTooltip && (
-        <div className="absolute z-20 top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-4 bg-white rounded-xl shadow-xl border border-slate-200 text-left animate-fade-in">
-          <h4 className="font-medium text-[#121317] text-sm mb-2" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-            {title}
-          </h4>
-          <ul className="space-y-1.5">
-            {details.map((detail, idx) => (
-              <li key={idx} className="text-xs text-[#6B7280] flex items-start gap-2">
-                <span className="text-[#4285F4] mt-0.5">•</span>
-                {detail}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-sky-50 text-[#4285F4] transition-transform duration-300 group-hover:scale-110">
-        <Icon className="h-6 w-6" />
-      </div>
-      <h3 className="font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-        {title}
-      </h3>
-      <p className="text-sm text-[#6B7280] leading-relaxed">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-// ============================================
-// SCROLL ZOOM SECTION COMPONENT
-// ============================================
-function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.85);
-  const [opacity, setOpacity] = useState(0.6);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
-
-      const rect = sectionRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const elementCenter = rect.top + rect.height / 2;
-      const viewportCenter = windowHeight / 2;
-      const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
-      const maxDistance = windowHeight / 2 + rect.height / 2;
-
-      const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
-      const newScale = 0.85 + progress * 0.15;
-      const newOpacity = 0.6 + progress * 0.4;
-
-      setScale(newScale);
-      setOpacity(newOpacity);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <div
-      ref={sectionRef}
-      className={className}
-      style={{
-        transform: `scale(${scale})`,
-        opacity: opacity,
-        transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
-        willChange: 'transform, opacity',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ============================================
 // LOGIN FORM COMPONENT
 // ============================================
 function LoginForm() {
@@ -496,60 +391,8 @@ function LoginForm() {
         Use your <span className="text-[#4285F4] font-medium">@iitr.ac.in</span> email to sign in
       </p>
 
-      {/* Feature Cards with Details */}
-      <ScrollZoomSection className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
-        <FeatureCard
-          icon={BookOpen}
-          title="Resources"
-          description="Notes, PYQs, and videos sorted by semester"
-          details={[
-            "Organized by branch and semester",
-            "Previous year papers with solutions",
-            "Lecture notes from seniors",
-            "Reference materials and videos",
-            "Search and filter by subject"
-          ]}
-        />
-        <FeatureCard
-          icon={Users}
-          title="Timetable"
-          description="Your weekly class schedule in one place"
-          details={[
-            "Monday to Saturday grid view",
-            "Lectures, tutorials, practicals",
-            "Room numbers and professors",
-            "Shows on your dashboard",
-            "Handles schedule overrides"
-          ]}
-        />
-        <FeatureCard
-          icon={Clock}
-          title="Timer & Tasks"
-          description="Track study time and to-dos"
-          details={[
-            "Pomodoro timer (25/45/60 min)",
-            "Link timer to specific tasks",
-            "See session history",
-            "Daily and weekly stats",
-            "Task priorities and due dates"
-          ]}
-        />
-        <FeatureCard
-          icon={Shield}
-          title="Calendar"
-          description="IIT-R holidays and exam dates"
-          details={[
-            "Official academic calendar",
-            "Mid-sem and end-sem dates",
-            "Vacation periods",
-            "Timetable overrides",
-            "Add your own events"
-          ]}
-        />
-      </ScrollZoomSection>
-
       {/* Trust text */}
-      <p className="text-xs text-[#9CA3AF] text-center max-w-md">
+      <p className="text-xs text-[#9CA3AF] text-center max-w-md mt-8">
         By signing in, you agree to access resources responsibly and in accordance with IIT Roorkee guidelines.
       </p>
     </div>
