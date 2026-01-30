@@ -343,9 +343,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-8 w-full max-w-4xl mx-auto">
-      {/* Hero Section - positioned below the particle text */}
-      <div className="text-center space-y-4 mt-44">
+    <div className="flex flex-col items-center gap-6 w-full max-w-4xl mx-auto">
+      {/* Hero Section - pushed further down for more space */}
+      <div className="text-center space-y-4 mt-72">
         <p
           className="text-lg md:text-xl text-[#45474D] font-light max-w-2xl mx-auto"
           style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
@@ -361,11 +361,11 @@ function LoginForm() {
         </div>
       )}
 
-      {/* Sign in Button */}
+      {/* Get Started / Sign in Button */}
       <button
         onClick={handleGoogleLogin}
         disabled={isGoogleLoading}
-        className="btn-antigravity flex items-center gap-3 rounded-full bg-[#121317] px-10 py-5 text-lg text-white font-medium hover:bg-[#2d2e33] hover:shadow-xl disabled:opacity-50"
+        className="btn-antigravity flex items-center gap-3 rounded-full bg-[#121317] px-10 py-5 text-lg text-white font-medium hover:bg-[#2d2e33] hover:shadow-xl disabled:opacity-50 mt-4"
         style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
       >
         {isGoogleLoading ? (
@@ -386,14 +386,9 @@ function LoginForm() {
         )}
       </button>
 
-      {/* Login Instruction - Simple text below button */}
+      {/* Login Instruction */}
       <p className="text-sm text-[#6B7280]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
         Use your <span className="text-[#4285F4] font-medium">@iitr.ac.in</span> email to sign in
-      </p>
-
-      {/* Trust text */}
-      <p className="text-xs text-[#9CA3AF] text-center max-w-md mt-8">
-        By signing in, you agree to access resources responsibly and in accordance with IIT Roorkee guidelines.
       </p>
     </div>
   );
