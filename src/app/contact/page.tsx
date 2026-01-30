@@ -188,6 +188,55 @@ function Logo() {
 }
 
 // ============================================
+// SCROLL ZOOM SECTION COMPONENT
+// ============================================
+function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+    const sectionRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(0.85);
+    const [opacity, setOpacity] = useState(0.6);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!sectionRef.current) return;
+
+            const rect = sectionRef.current.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const elementCenter = rect.top + rect.height / 2;
+            const viewportCenter = windowHeight / 2;
+            const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
+            const maxDistance = windowHeight / 2 + rect.height / 2;
+
+            const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
+            const newScale = 0.85 + progress * 0.15;
+            const newOpacity = 0.6 + progress * 0.4;
+
+            setScale(newScale);
+            setOpacity(newOpacity);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    return (
+        <div
+            ref={sectionRef}
+            className={className}
+            style={{
+                transform: `scale(${scale})`,
+                opacity: opacity,
+                transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+                willChange: 'transform, opacity',
+            }}
+        >
+            {children}
+        </div>
+    );
+}
+
+// ============================================
 // CONTACT PAGE
 // ============================================
 export default function ContactPage() {
@@ -233,7 +282,7 @@ export default function ContactPage() {
                     </Link>
 
                     {/* Header */}
-                    <div className="text-center mb-12">
+                    <ScrollZoomSection className="text-center mb-12">
                         <h1
                             className="text-4xl md:text-5xl font-light text-[#121317] mb-4"
                             style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
@@ -243,9 +292,9 @@ export default function ContactPage() {
                         <p className="text-lg text-[#45474D] max-w-2xl mx-auto">
                             Have questions, feedback, or want to collaborate? We&apos;d love to hear from you.
                         </p>
-                    </div>
+                    </ScrollZoomSection>
 
-                    <div className="grid md:grid-cols-2 gap-12">
+                    <ScrollZoomSection className="grid md:grid-cols-2 gap-12">
                         {/* Contact Info */}
                         <div className="space-y-8">
                             <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 space-y-6">
@@ -369,9 +418,9 @@ export default function ContactPage() {
                                 </form>
                             )}
                         </div>
-                    </div>
+                    </ScrollZoomSection>
                 </div>
-            </main>
+            </main >
 
             <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');

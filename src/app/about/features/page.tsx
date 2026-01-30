@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
     ArrowLeft, BookOpen, Users, Clock, Shield,
@@ -10,6 +10,56 @@ import {
     Lock, Calendar, CalendarDays, Table2,
     ChevronDown, ChevronUp, Bell, RefreshCw
 } from "lucide-react";
+
+// ============================================
+// SCROLL ZOOM SECTION COMPONENT
+// ============================================
+function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+    const sectionRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(0.85);
+    const [opacity, setOpacity] = useState(0.6);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!sectionRef.current) return;
+
+            const rect = sectionRef.current.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const elementCenter = rect.top + rect.height / 2;
+            const viewportCenter = windowHeight / 2;
+            const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
+            const maxDistance = windowHeight / 2 + rect.height / 2;
+
+            const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
+            const newScale = 0.85 + progress * 0.15;
+            const newOpacity = 0.6 + progress * 0.4;
+
+            setScale(newScale);
+            setOpacity(newOpacity);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    return (
+        <div
+            ref={sectionRef}
+            className={className}
+            style={{
+                transform: `scale(${scale})`,
+                opacity: opacity,
+                transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+                willChange: 'transform, opacity',
+            }}
+        >
+            {children}
+        </div>
+    );
+}
+
 
 // ============================================
 // FEATURE SECTION COMPONENT
@@ -155,7 +205,7 @@ export default function FeaturesPage() {
                     </Link>
 
                     {/* Hero Section */}
-                    <div className="text-center mb-10">
+                    <ScrollZoomSection className="text-center mb-10">
                         <h1
                             className="text-3xl md:text-4xl font-light text-[#121317] mb-3"
                             style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
@@ -165,7 +215,7 @@ export default function FeaturesPage() {
                         <p className="text-[#6B7280] max-w-xl mx-auto">
                             Everything we&apos;ve built so far. More coming soon.
                         </p>
-                    </div>
+                    </ScrollZoomSection>
 
                     {/* Feature Sections */}
                     <div className="space-y-6">

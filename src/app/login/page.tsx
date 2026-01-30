@@ -361,6 +361,55 @@ function FeatureCard({ icon: Icon, title, description, details }: {
 }
 
 // ============================================
+// SCROLL ZOOM SECTION COMPONENT
+// ============================================
+function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.85);
+  const [opacity, setOpacity] = useState(0.6);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+
+      const rect = sectionRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const elementCenter = rect.top + rect.height / 2;
+      const viewportCenter = windowHeight / 2;
+      const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
+      const maxDistance = windowHeight / 2 + rect.height / 2;
+
+      const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
+      const newScale = 0.85 + progress * 0.15;
+      const newOpacity = 0.6 + progress * 0.4;
+
+      setScale(newScale);
+      setOpacity(newOpacity);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <div
+      ref={sectionRef}
+      className={className}
+      style={{
+        transform: `scale(${scale})`,
+        opacity: opacity,
+        transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+        willChange: 'transform, opacity',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================
 // LOGIN FORM COMPONENT
 // ============================================
 function LoginForm() {
@@ -448,7 +497,7 @@ function LoginForm() {
       </p>
 
       {/* Feature Cards with Details */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
+      <ScrollZoomSection className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
         <FeatureCard
           icon={BookOpen}
           title="Resources"
@@ -497,7 +546,7 @@ function LoginForm() {
             "Add your own events"
           ]}
         />
-      </div>
+      </ScrollZoomSection>
 
       {/* Trust text */}
       <p className="text-xs text-[#9CA3AF] text-center max-w-md">
