@@ -54,34 +54,24 @@ const navItems = [
   },
 ];
 
-// Antigravity Logo Component
-function AntigravityLogo() {
+// StudyWindow Logo Component
+function StudyWindowLogo() {
   return (
     <svg
       width="32"
       height="32"
-      viewBox="0 0 32 32"
+      viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path
-        d="M16 2L4 28H10L12.5 22H19.5L22 28H28L16 2Z"
-        fill="url(#logo-gradient)"
-      />
-      <path d="M14 18L16 12L18 18H14Z" fill="white" />
-      <defs>
-        <linearGradient
-          id="logo-gradient"
-          x1="4"
-          y1="2"
-          x2="28"
-          y2="28"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#4285F4" />
-          <stop offset="1" stopColor="#0EA5E9" />
-        </linearGradient>
-      </defs>
+      {/* Left window panel with S */}
+      <rect x="4" y="8" width="18" height="32" rx="2" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+      <text x="13" y="20" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">S</text>
+      <text x="13" y="32" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">W</text>
+      {/* Right window panel (open door effect) */}
+      <path d="M26 8 L42 12 L42 36 L26 40 Z" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+      <line x1="34" y1="15" x2="38" y2="16" stroke="#7CB9E8" strokeWidth="2" />
+      <line x1="34" y1="32" x2="38" y2="33" stroke="#7CB9E8" strokeWidth="2" />
     </svg>
   );
 }
@@ -105,7 +95,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-slate-200/60 px-6 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <AntigravityLogo />
+          <StudyWindowLogo />
           <div className="flex flex-col">
             <span className="text-lg font-medium tracking-tight text-slate-900 dark:text-white">
               <span className="text-[#4285F4]">Study</span>
