@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, Users, Target, Sparkles, GraduationCap, Heart, Code, Lightbulb } from "lucide-react";
 
@@ -46,7 +46,8 @@ function ParticleBackground() {
 
         const createParticles = () => {
             const particles: Particle[] = [];
-            const count = Math.floor((canvas.width * canvas.height) / 6000);
+            // Reduced particle count for better performance
+            const count = Math.floor((canvas.width * canvas.height) / 12000);
 
             for (let i = 0; i < count; i++) {
                 const x = Math.random() * canvas.width;
@@ -59,8 +60,8 @@ function ParticleBackground() {
                     baseY: y,
                     size: Math.random() * 4 + 1,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: (Math.random() - 0.5) * 0.4,
-                    speedY: (Math.random() - 0.5) * 0.4,
+                    speedX: (Math.random() - 0.5) * 0.3,
+                    speedY: (Math.random() - 0.5) * 0.3,
                     opacity: Math.random() * 0.5 + 0.3,
                     pulsePhase: Math.random() * Math.PI * 2,
                 });
@@ -88,26 +89,6 @@ function ParticleBackground() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const mouse = mouseRef.current;
             time += 0.02;
-
-            ctx.strokeStyle = "rgba(66, 133, 244, 0.08)";
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i < particlesRef.current.length; i++) {
-                for (let j = i + 1; j < particlesRef.current.length; j++) {
-                    const p1 = particlesRef.current[i];
-                    const p2 = particlesRef.current[j];
-                    const dx = p1.x - p2.x;
-                    const dy = p1.y - p2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 80) {
-                        ctx.globalAlpha = (80 - distance) / 80 * 0.3;
-                        ctx.beginPath();
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.stroke();
-                    }
-                }
-            }
 
             particlesRef.current.forEach((particle) => {
                 const dx = mouse.x - particle.x;
@@ -178,15 +159,15 @@ function Logo() {
     return (
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-white/50 backdrop-blur-sm border-b border-slate-100">
             <Link href="/login" className="flex items-center gap-2">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 2L4 28H10L12.5 22H19.5L22 28H28L16 2Z" fill="url(#gradient-about)" />
-                    <path d="M14 18L16 12L18 18H14Z" fill="white" />
-                    <defs>
-                        <linearGradient id="gradient-about" x1="4" y1="2" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                            <stop stopColor="#4285F4" />
-                            <stop offset="1" stopColor="#0EA5E9" />
-                        </linearGradient>
-                    </defs>
+                <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Left window panel with S */}
+                    <rect x="4" y="8" width="18" height="32" rx="2" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+                    <text x="13" y="20" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">S</text>
+                    <text x="13" y="32" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">W</text>
+                    {/* Right window panel (open door effect) */}
+                    <path d="M26 8 L42 12 L42 36 L26 40 Z" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+                    <line x1="34" y1="15" x2="38" y2="16" stroke="#7CB9E8" strokeWidth="2" />
+                    <line x1="34" y1="32" x2="38" y2="33" stroke="#7CB9E8" strokeWidth="2" />
                 </svg>
                 <span className="text-xl font-light tracking-tight" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
                     <span className="text-[#4285F4] font-medium">Study</span>
@@ -196,6 +177,7 @@ function Logo() {
 
             <nav className="hidden md:flex items-center gap-6">
                 <Link href="/about" className="text-sm text-[#4285F4] font-medium">About</Link>
+                <Link href="/about/features" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors">Features</Link>
                 <Link href="/contact" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors">Contact</Link>
                 <Link href="/login" className="text-sm text-white bg-[#121317] px-4 py-2 rounded-full hover:bg-[#2d2e33] transition-colors">
                     Sign In
@@ -225,6 +207,59 @@ function ValueCard({ icon: Icon, title, description, color }: {
             <p className="text-sm text-[#6B7280] leading-relaxed">
                 {description}
             </p>
+        </div>
+    );
+}
+
+// ============================================
+// SCROLL ZOOM SECTION COMPONENT
+// ============================================
+function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+    const sectionRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(0.85);
+    const [opacity, setOpacity] = useState(0.6);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!sectionRef.current) return;
+
+            const rect = sectionRef.current.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const elementCenter = rect.top + rect.height / 2;
+            const viewportCenter = windowHeight / 2;
+            const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
+            const maxDistance = windowHeight / 2 + rect.height / 2;
+
+            // Calculate progress (0 = far, 1 = centered)
+            const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
+
+            // Scale from 0.85 to 1 for dramatic effect
+            const newScale = 0.85 + progress * 0.15;
+            // Opacity from 0.6 to 1
+            const newOpacity = 0.6 + progress * 0.4;
+
+            setScale(newScale);
+            setOpacity(newOpacity);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll(); // Initial check
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    return (
+        <div
+            ref={sectionRef}
+            className={className}
+            style={{
+                transform: `scale(${scale})`,
+                opacity: opacity,
+                transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+                willChange: 'transform, opacity',
+            }}
+        >
+            {children}
         </div>
     );
 }
@@ -264,7 +299,7 @@ export default function AboutPage() {
                     <div className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-4 py-2 text-sm text-[#4285F4] mb-6">
                             <Sparkles className="h-4 w-4" />
-                            <span>Built by students, for students</span>
+                            <span>Made by IITR students</span>
                         </div>
                         <h1
                             className="text-4xl md:text-5xl lg:text-6xl font-light text-[#121317] mb-6"
@@ -273,115 +308,128 @@ export default function AboutPage() {
                             About <span className="text-[#4285F4]">Study Window</span>
                         </h1>
                         <p className="text-lg md:text-xl text-[#45474D] max-w-3xl mx-auto leading-relaxed">
-                            We believe every IIT Roorkee student deserves easy access to quality study resources.
-                            Study Window is our answer to scattered materials, lost notes, and endless searches.
+                            We got tired of asking seniors for notes, searching through dozens of WhatsApp groups,
+                            and losing track of PYQs. So we built this.
                         </p>
                     </div>
 
-                    {/* Mission Section */}
-                    <div className="grid md:grid-cols-2 gap-8 mb-16">
-                        <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-3xl p-8 border border-blue-100">
+                    {/* Why We Built This */}
+                    <ScrollZoomSection className="grid md:grid-cols-2 gap-8 mb-16">
+                        <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-3xl p-8 border border-blue-100 hover:shadow-lg transition-shadow duration-300">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#4285F4]">
                                     <Target className="h-5 w-5" />
                                 </div>
                                 <h2 className="text-xl font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-                                    Our Mission
+                                    The Problem
                                 </h2>
                             </div>
                             <p className="text-[#45474D] leading-relaxed">
-                                To create a centralized, organized, and accessible platform for all academic resources
-                                at IIT Roorkee — making studying more efficient and collaborative.
+                                Notes scattered across Google Drives. PYQs lost in WhatsApp forwards.
+                                No central place to find what you need before exams.
                             </p>
                         </div>
 
-                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-3xl p-8 border border-emerald-100">
+                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-3xl p-8 border border-emerald-100 hover:shadow-lg transition-shadow duration-300">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-500">
                                     <GraduationCap className="h-5 w-5" />
                                 </div>
                                 <h2 className="text-xl font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-                                    Our Vision
+                                    Our Solution
                                 </h2>
                             </div>
                             <p className="text-[#45474D] leading-relaxed">
-                                A future where no student struggles to find quality study materials, where knowledge
-                                is freely shared, and academic excellence is within everyone&apos;s reach.
+                                One place for everything. Organized by semester and branch.
+                                Plus a timetable, calendar, and timer to stay on track.
                             </p>
                         </div>
-                    </div>
+                    </ScrollZoomSection>
 
-                    {/* Values Section */}
-                    <div className="mb-16">
+                    {/* What's Included */}
+                    <ScrollZoomSection className="mb-16">
                         <div className="text-center mb-10">
                             <h2
                                 className="text-2xl md:text-3xl font-light text-[#121317] mb-3"
                                 style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
                             >
-                                What We Offer
+                                What&apos;s Included
                             </h2>
-                            <p className="text-[#6B7280]">Everything you need for academic success</p>
+                            <p className="text-[#6B7280]">The stuff we&apos;ve built so far</p>
                         </div>
 
                         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
                             <ValueCard
                                 icon={BookOpen}
-                                title="Curated Resources"
-                                description="Notes, PYQs, tutorials, and reference materials organized by subject and semester."
+                                title="Resources"
+                                description="Notes, PYQs, and videos sorted by semester and branch."
                                 color="bg-blue-50 text-[#4285F4]"
                             />
                             <ValueCard
                                 icon={Users}
-                                title="Community Hub"
-                                description="Connect with peers, join study groups, and share knowledge across batches."
-                                color="bg-purple-50 text-purple-500"
+                                title="Timetable"
+                                description="Add your weekly schedule and see today's classes on the dashboard."
+                                color="bg-indigo-50 text-indigo-500"
                             />
                             <ValueCard
                                 icon={Lightbulb}
-                                title="Smart Tools"
-                                description="Focus timer, progress tracking, and productivity features to boost your studies."
+                                title="Timer & Tasks"
+                                description="Pomodoro timer and a task list to track what you need to do."
                                 color="bg-amber-50 text-amber-500"
                             />
                             <ValueCard
                                 icon={Code}
-                                title="Open Platform"
-                                description="Contribute resources, suggest improvements, and help build the community."
+                                title="Calendar"
+                                description="IIT-R holidays, exam dates, and your personal events."
                                 color="bg-emerald-50 text-emerald-500"
                             />
                         </div>
-                    </div>
+
+                        {/* Explore Features CTA */}
+                        <div className="text-center mt-8">
+                            <Link
+                                href="/about/features"
+                                className="inline-flex items-center gap-2 rounded-full border border-[#4285F4] text-[#4285F4] px-6 py-3 font-medium hover:bg-[#4285F4] hover:text-white transition-all"
+                            >
+                                <Sparkles className="h-4 w-4" />
+                                Explore All Features
+                            </Link>
+                        </div>
+                    </ScrollZoomSection>
 
                     {/* Team Section */}
-                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 p-8 md:p-12 text-center">
-                        <div className="flex items-center justify-center gap-2 text-[#4285F4] mb-4">
-                            <Heart className="h-5 w-5" />
-                            <span className="text-sm font-medium">Built with love</span>
-                        </div>
-                        <h2
-                            className="text-2xl md:text-3xl font-light text-[#121317] mb-4"
-                            style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
-                        >
-                            Made by IIT Roorkee Students
-                        </h2>
-                        <p className="text-[#6B7280] max-w-2xl mx-auto mb-8 leading-relaxed">
-                            Study Window is a community-driven initiative. We&apos;re a group of students who experienced
-                            the challenges of finding good study materials firsthand — and decided to do something about it.
-                        </p>
-                        <div className="flex flex-wrap items-center justify-center gap-4">
-                            <Link
-                                href="/contact"
-                                className="inline-flex items-center gap-2 rounded-full bg-[#121317] px-6 py-3 text-white font-medium hover:bg-[#2d2e33] transition-all hover:shadow-lg"
+                    <ScrollZoomSection>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 p-8 md:p-12 text-center hover:shadow-xl transition-shadow duration-300">
+                            <div className="flex items-center justify-center gap-2 text-[#4285F4] mb-4">
+                                <Heart className="h-5 w-5" />
+                                <span className="text-sm font-medium">Built with love</span>
+                            </div>
+                            <h2
+                                className="text-2xl md:text-3xl font-light text-[#121317] mb-4"
+                                style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
                             >
-                                Get in Touch
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-[#121317] font-medium hover:border-blue-200 hover:text-[#4285F4] transition-all"
-                            >
-                                Join the Platform
-                            </Link>
+                                Made by IIT Roorkee Students
+                            </h2>
+                            <p className="text-[#6B7280] max-w-2xl mx-auto mb-8 leading-relaxed">
+                                Study Window is a community-driven initiative. We&apos;re a group of students who experienced
+                                the challenges of finding good study materials firsthand — and decided to do something about it.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-4">
+                                <Link
+                                    href="/contact"
+                                    className="inline-flex items-center gap-2 rounded-full bg-[#121317] px-6 py-3 text-white font-medium hover:bg-[#2d2e33] transition-all hover:shadow-lg"
+                                >
+                                    Get in Touch
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-[#121317] font-medium hover:border-blue-200 hover:text-[#4285F4] transition-all"
+                                >
+                                    Join the Platform
+                                </Link>
+                            </div>
                         </div>
-                    </div>
+                    </ScrollZoomSection>
                 </div>
             </main>
 

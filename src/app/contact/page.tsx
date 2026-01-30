@@ -46,7 +46,8 @@ function ParticleBackground() {
 
         const createParticles = () => {
             const particles: Particle[] = [];
-            const count = Math.floor((canvas.width * canvas.height) / 6000);
+            // Reduced particle count for better performance
+            const count = Math.floor((canvas.width * canvas.height) / 12000);
 
             for (let i = 0; i < count; i++) {
                 const x = Math.random() * canvas.width;
@@ -59,8 +60,8 @@ function ParticleBackground() {
                     baseY: y,
                     size: Math.random() * 4 + 1,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: (Math.random() - 0.5) * 0.4,
-                    speedY: (Math.random() - 0.5) * 0.4,
+                    speedX: (Math.random() - 0.5) * 0.3,
+                    speedY: (Math.random() - 0.5) * 0.3,
                     opacity: Math.random() * 0.5 + 0.3,
                     pulsePhase: Math.random() * Math.PI * 2,
                 });
@@ -88,26 +89,6 @@ function ParticleBackground() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const mouse = mouseRef.current;
             time += 0.02;
-
-            ctx.strokeStyle = "rgba(66, 133, 244, 0.08)";
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i < particlesRef.current.length; i++) {
-                for (let j = i + 1; j < particlesRef.current.length; j++) {
-                    const p1 = particlesRef.current[i];
-                    const p2 = particlesRef.current[j];
-                    const dx = p1.x - p2.x;
-                    const dy = p1.y - p2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 80) {
-                        ctx.globalAlpha = (80 - distance) / 80 * 0.3;
-                        ctx.beginPath();
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.stroke();
-                    }
-                }
-            }
 
             particlesRef.current.forEach((particle) => {
                 const dx = mouse.x - particle.x;
@@ -178,15 +159,15 @@ function Logo() {
     return (
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-white/50 backdrop-blur-sm border-b border-slate-100">
             <Link href="/login" className="flex items-center gap-2">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 2L4 28H10L12.5 22H19.5L22 28H28L16 2Z" fill="url(#gradient-contact)" />
-                    <path d="M14 18L16 12L18 18H14Z" fill="white" />
-                    <defs>
-                        <linearGradient id="gradient-contact" x1="4" y1="2" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                            <stop stopColor="#4285F4" />
-                            <stop offset="1" stopColor="#0EA5E9" />
-                        </linearGradient>
-                    </defs>
+                <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Left window panel with S */}
+                    <rect x="4" y="8" width="18" height="32" rx="2" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+                    <text x="13" y="20" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">S</text>
+                    <text x="13" y="32" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">W</text>
+                    {/* Right window panel (open door effect) */}
+                    <path d="M26 8 L42 12 L42 36 L26 40 Z" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+                    <line x1="34" y1="15" x2="38" y2="16" stroke="#7CB9E8" strokeWidth="2" />
+                    <line x1="34" y1="32" x2="38" y2="33" stroke="#7CB9E8" strokeWidth="2" />
                 </svg>
                 <span className="text-xl font-light tracking-tight" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
                     <span className="text-[#4285F4] font-medium">Study</span>
@@ -196,6 +177,7 @@ function Logo() {
 
             <nav className="hidden md:flex items-center gap-6">
                 <Link href="/about" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors">About</Link>
+                <Link href="/about/features" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors">Features</Link>
                 <Link href="/contact" className="text-sm text-[#4285F4] font-medium">Contact</Link>
                 <Link href="/login" className="text-sm text-white bg-[#121317] px-4 py-2 rounded-full hover:bg-[#2d2e33] transition-colors">
                     Sign In

@@ -55,7 +55,7 @@ function TextParticleBackground() {
     // Create background floating particles
     const createBackgroundParticles = () => {
       const bgParticles: Particle[] = [];
-      const count = Math.floor((canvas.width * canvas.height) / 40000); // Very sparse
+      const count = Math.floor((canvas.width * canvas.height) / 15000); // More particles
 
       for (let i = 0; i < count; i++) {
         bgParticles.push({
@@ -305,15 +305,48 @@ function TypingText({ text, className }: { text: string; className?: string }) {
 }
 
 // ============================================
-// FEATURE CARD COMPONENT
+// FEATURE CARD COMPONENT WITH TOOLTIP
 // ============================================
-function FeatureCard({ icon: Icon, title, description }: {
+function FeatureCard({ icon: Icon, title, description, details }: {
   icon: React.ElementType;
   title: string;
   description: string;
+  details: string[];
 }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   return (
-    <div className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-sm p-6 text-center transition-all duration-300 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:-translate-y-1">
+    <div
+      className="group relative flex flex-col items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-sm p-6 text-center transition-all duration-300 hover:border-blue-200 hover:bg-white hover:shadow-lg hover:-translate-y-1"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* Info Icon */}
+      <button
+        className="absolute top-3 right-3 text-slate-400 hover:text-[#4285F4] transition-colors"
+        onClick={() => setShowTooltip(!showTooltip)}
+        aria-label="More information"
+      >
+        <Info className="h-4 w-4" />
+      </button>
+
+      {/* Tooltip */}
+      {showTooltip && (
+        <div className="absolute z-20 top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-4 bg-white rounded-xl shadow-xl border border-slate-200 text-left animate-fade-in">
+          <h4 className="font-medium text-[#121317] text-sm mb-2" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
+            {title}
+          </h4>
+          <ul className="space-y-1.5">
+            {details.map((detail, idx) => (
+              <li key={idx} className="text-xs text-[#6B7280] flex items-start gap-2">
+                <span className="text-[#4285F4] mt-0.5">•</span>
+                {detail}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-sky-50 text-[#4285F4] transition-transform duration-300 group-hover:scale-110">
         <Icon className="h-6 w-6" />
       </div>
@@ -366,17 +399,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-10 w-full max-w-4xl mx-auto">
-      {/* Instructional Note */}
-      <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-4 py-2 text-sm text-[#4285F4] backdrop-blur-sm animate-float-in">
-        <Info className="h-4 w-4" />
-        <span style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-          Login only with institute mail ID
-        </span>
-      </div>
-
+    <div className="flex flex-col items-center gap-8 w-full max-w-4xl mx-auto">
       {/* Hero Section - positioned below the particle text */}
-      <div className="text-center space-y-4 mt-32">
+      <div className="text-center space-y-4 mt-44">
         <p
           className="text-lg md:text-xl text-[#45474D] font-light max-w-2xl mx-auto"
           style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
@@ -417,27 +442,60 @@ function LoginForm() {
         )}
       </button>
 
-      {/* Feature Cards */}
+      {/* Login Instruction - Simple text below button */}
+      <p className="text-sm text-[#6B7280]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
+        Use your <span className="text-[#4285F4] font-medium">@iitr.ac.in</span> email to sign in
+      </p>
+
+      {/* Feature Cards with Details */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
         <FeatureCard
           icon={BookOpen}
-          title="Course Materials"
-          description="Access organized notes, PYQs, and resources for all subjects"
+          title="Resources"
+          description="Notes, PYQs, and videos sorted by semester"
+          details={[
+            "Organized by branch and semester",
+            "Previous year papers with solutions",
+            "Lecture notes from seniors",
+            "Reference materials and videos",
+            "Search and filter by subject"
+          ]}
         />
         <FeatureCard
           icon={Users}
-          title="Community"
-          description="Connect with peers, share knowledge, and collaborate"
+          title="Timetable"
+          description="Your weekly class schedule in one place"
+          details={[
+            "Monday to Saturday grid view",
+            "Lectures, tutorials, practicals",
+            "Room numbers and professors",
+            "Shows on your dashboard",
+            "Handles schedule overrides"
+          ]}
         />
         <FeatureCard
           icon={Clock}
-          title="Focus Timer"
-          description="Track study sessions with built-in productivity tools"
+          title="Timer & Tasks"
+          description="Track study time and to-dos"
+          details={[
+            "Pomodoro timer (25/45/60 min)",
+            "Link timer to specific tasks",
+            "See session history",
+            "Daily and weekly stats",
+            "Task priorities and due dates"
+          ]}
         />
         <FeatureCard
           icon={Shield}
-          title="IIT-R Exclusive"
-          description="Curated content specifically for IITR students"
+          title="Calendar"
+          description="IIT-R holidays and exam dates"
+          details={[
+            "Official academic calendar",
+            "Mid-sem and end-sem dates",
+            "Vacation periods",
+            "Timetable overrides",
+            "Add your own events"
+          ]}
         />
       </div>
 
@@ -456,15 +514,15 @@ function Logo() {
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12">
       <div className="flex items-center gap-2">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 2L4 28H10L12.5 22H19.5L22 28H28L16 2Z" fill="url(#gradient)" />
-          <path d="M14 18L16 12L18 18H14Z" fill="white" />
-          <defs>
-            <linearGradient id="gradient" x1="4" y1="2" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#4285F4" />
-              <stop offset="1" stopColor="#0EA5E9" />
-            </linearGradient>
-          </defs>
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Left window panel with S */}
+          <rect x="4" y="8" width="18" height="32" rx="2" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+          <text x="13" y="20" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">S</text>
+          <text x="13" y="32" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">W</text>
+          {/* Right window panel (open door effect) */}
+          <path d="M26 8 L42 12 L42 36 L26 40 Z" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
+          <line x1="34" y1="15" x2="38" y2="16" stroke="#7CB9E8" strokeWidth="2" />
+          <line x1="34" y1="32" x2="38" y2="33" stroke="#7CB9E8" strokeWidth="2" />
         </svg>
         <span className="text-xl font-light tracking-tight" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
           <span className="text-[#4285F4] font-medium">Study</span>
@@ -476,6 +534,9 @@ function Logo() {
       <nav className="hidden md:flex items-center gap-6">
         <Link href="/about" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
           About
+        </Link>
+        <Link href="/about/features" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
+          Features
         </Link>
         <Link href="/contact" className="text-sm text-[#45474D] hover:text-[#4285F4] transition-colors" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
           Contact
