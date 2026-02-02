@@ -275,10 +275,7 @@ export default function AboutPage() {
             <div
                 className="fixed inset-0 z-0"
                 style={{
-                    background: `
-            radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 50%, rgba(225,230,236,0.8) 100%),
-            linear-gradient(to bottom, rgba(66, 133, 244, 0.05) 0%, transparent 30%, transparent 70%, rgba(14, 165, 233, 0.05) 100%)
-          `,
+                    background: `radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 60%, rgba(248,250,252,0.95) 100%)`,
                 }}
             />
 

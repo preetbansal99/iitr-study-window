@@ -341,7 +341,7 @@ export default function FeaturesPage() {
             <div
                 className="fixed inset-0 z-0"
                 style={{
-                    background: `radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 50%, rgba(225,230,236,0.8) 100%)`,
+                    background: `radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,1) 60%, rgba(248,250,252,0.95) 100%)`,
                 }}
             />
 
