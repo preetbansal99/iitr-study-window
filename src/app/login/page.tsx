@@ -15,12 +15,16 @@ interface Particle {
   targetX: number;
   targetY: number;
   size: number;
+  baseSize?: number;
   color: string;
+  colorIndex?: number;
   vx: number;
   vy: number;
   isBackground?: boolean;
   floatAngle?: number;
   floatSpeed?: number;
+  opacity?: number;
+  baseOpacity?: number;
 }
 
 function TextParticleBackground() {
@@ -37,39 +41,40 @@ function TextParticleBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Colors for text particles
-    const colors = [
-      "#4285F4", "#60A5FA", "#3B82F6", "#0EA5E9", "#10B981",
-      "#FBBF24", "#F97316", "#93C5FD", "#6EE7B7",
-    ];
-
-    // Light colors for background particles
+    // Color palette for particles
+    const particleColor = "rgba(124, 185, 232, 0.85)";
     const bgColors = [
-      "rgba(66, 133, 244, 0.12)",
-      "rgba(96, 165, 250, 0.10)",
-      "rgba(14, 165, 233, 0.08)",
-      "rgba(16, 185, 129, 0.10)",
-      "rgba(251, 191, 36, 0.08)",
+      "rgba(124, 185, 232,", // Light blue
+      "rgba(96, 165, 250,",  // Blue
+      "rgba(59, 130, 246,",  // Bright blue
+      "rgba(14, 165, 233,",  // Cyan blue
     ];
 
-    // Create background floating particles
+    // Create background floating particles with repelling effect
     const createBackgroundParticles = () => {
       const bgParticles: Particle[] = [];
-      const count = Math.floor((canvas.width * canvas.height) / 15000); // More particles
+      // More particles for denser look
+      const count = Math.floor((canvas.width * canvas.height) / 12000);
 
       for (let i = 0; i < count; i++) {
+        const baseSize = Math.random() * 2.5 + 1;
+        const baseOpacity = Math.random() * 0.15 + 0.08;
         bgParticles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          targetX: 0,
-          targetY: 0,
-          size: Math.random() * 4 + 2,
-          color: bgColors[Math.floor(Math.random() * bgColors.length)],
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
+          targetX: Math.random() * canvas.width,
+          targetY: Math.random() * canvas.height,
+          size: baseSize,
+          baseSize: baseSize,
+          color: "",
+          colorIndex: Math.floor(Math.random() * bgColors.length),
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: (Math.random() - 0.5) * 0.2,
           isBackground: true,
           floatAngle: Math.random() * Math.PI * 2,
-          floatSpeed: 0.002 + Math.random() * 0.003,
+          floatSpeed: 0.001 + Math.random() * 0.002,
+          opacity: baseOpacity,
+          baseOpacity: baseOpacity,
         });
       }
       backgroundParticlesRef.current = bgParticles;
@@ -92,17 +97,19 @@ function TextParticleBackground() {
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
 
-      // Determine text based on screen size
-      const text = canvas.width < 600 ? "Study" : "Study";
-      const fontSize = Math.min(canvas.width * 0.18, 200);
+      // Professional text - "StudyWindow" for branding
+      const text = canvas.width < 600 ? "SW" : "StudyWindow";
+      const fontSize = canvas.width < 600
+        ? Math.min(canvas.width * 0.25, 150)
+        : Math.min(canvas.width * 0.12, 140);
 
-      // Draw text
+      // Draw text with clean font
       tempCtx.fillStyle = "#000";
-      tempCtx.font = `bold ${fontSize}px "Outfit", sans-serif`;
+      tempCtx.font = `600 ${fontSize}px "Outfit", "Inter", system-ui, sans-serif`;
       tempCtx.textAlign = "center";
       tempCtx.textBaseline = "middle";
 
-      // Position text higher - moved up to avoid overlap
+      // Position text in upper portion
       const textY = canvas.height * 0.22;
       tempCtx.fillText(text, canvas.width / 2, textY);
 
@@ -111,8 +118,8 @@ function TextParticleBackground() {
       const data = imageData.data;
       const particles: Particle[] = [];
 
-      // Larger gap for less density (more readable)
-      const gap = Math.max(5, Math.floor(fontSize / 25));
+      // Smaller gap = more particles for smoother text
+      const gap = Math.max(3, Math.floor(fontSize / 35));
 
       for (let y = 0; y < tempCanvas.height; y += gap) {
         for (let x = 0; x < tempCanvas.width; x += gap) {
@@ -125,8 +132,8 @@ function TextParticleBackground() {
               y: Math.random() * canvas.height,
               targetX: x,
               targetY: y,
-              size: Math.random() * 2.5 + 1.5,
-              color: colors[Math.floor(Math.random() * colors.length)],
+              size: Math.random() * 1.2 + 1, // Smaller bubbles
+              color: particleColor,
               vx: 0,
               vy: 0,
             });
@@ -157,40 +164,58 @@ function TextParticleBackground() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const mouse = mouseRef.current;
 
-      // Slower physics for text particles
-      const repelRadius = 100;
-      const friction = 0.92; // Higher = slower deceleration
-      const springStrength = 0.025; // Lower = slower return
-      const repelForce = 3; // Lower = gentler push
+      // Physics settings
+      const repelRadius = 120;
+      const bgRepelRadius = 80;
+      const friction = 0.92;
+      const springStrength = 0.025;
+      const repelForce = 3;
 
-      // Draw background particles first (behind text)
+      // Draw background particles with repelling effect
       backgroundParticlesRef.current.forEach((particle) => {
-        // Gentle floating motion
         particle.floatAngle = (particle.floatAngle || 0) + (particle.floatSpeed || 0.002);
-        particle.x += Math.sin(particle.floatAngle) * 0.3 + particle.vx;
-        particle.y += Math.cos(particle.floatAngle * 0.7) * 0.2 + particle.vy;
 
-        // Wrap around screen
+        // Calculate repelling from cursor
+        const dx = mouse.x - particle.x;
+        const dy = mouse.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < bgRepelRadius && distance > 0) {
+          const force = (bgRepelRadius - distance) / bgRepelRadius;
+          const angle = Math.atan2(dy, dx);
+          particle.x -= Math.cos(angle) * force * 4;
+          particle.y -= Math.sin(angle) * force * 4;
+
+          // Dynamic size increase when repelled
+          particle.size = (particle.baseSize || 1.5) * (1 + force * 1.5);
+          // Dynamic opacity increase when repelled
+          particle.opacity = Math.min(0.5, (particle.baseOpacity || 0.1) * (1 + force * 3));
+        } else {
+          // Return to base size/opacity smoothly
+          particle.size += ((particle.baseSize || 1.5) - particle.size) * 0.08;
+          particle.opacity = (particle.opacity || 0.1) + ((particle.baseOpacity || 0.1) - (particle.opacity || 0.1)) * 0.08;
+        }
+
+        particle.x += Math.sin(particle.floatAngle) * 0.2 + particle.vx;
+        particle.y += Math.cos(particle.floatAngle * 0.7) * 0.15 + particle.vy;
+
         if (particle.x < -20) particle.x = canvas.width + 20;
         if (particle.x > canvas.width + 20) particle.x = -20;
         if (particle.y < -20) particle.y = canvas.height + 20;
         if (particle.y > canvas.height + 20) particle.y = -20;
 
-        // Draw background particle
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = particle.color;
+        ctx.fillStyle = bgColors[particle.colorIndex || 0] + (particle.opacity || 0.1) + ")";
         ctx.fill();
       });
 
       // Draw text particles
       particlesRef.current.forEach((particle) => {
-        // Calculate distance to cursor
         const dx = mouse.x - particle.x;
         const dy = mouse.y - particle.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Repel from cursor (slower)
         if (distance < repelRadius && distance > 0) {
           const force = (repelRadius - distance) / repelRadius;
           const angle = Math.atan2(dy, dx);
@@ -198,21 +223,17 @@ function TextParticleBackground() {
           particle.vy -= Math.sin(angle) * force * repelForce;
         }
 
-        // Spring back to target position (slower)
         const toTargetX = particle.targetX - particle.x;
         const toTargetY = particle.targetY - particle.y;
         particle.vx += toTargetX * springStrength;
         particle.vy += toTargetY * springStrength;
 
-        // Apply friction
         particle.vx *= friction;
         particle.vy *= friction;
 
-        // Update position
         particle.x += particle.vx;
         particle.y += particle.vy;
 
-        // Draw particle (simple circle, no glow/shadow)
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fillStyle = particle.color;

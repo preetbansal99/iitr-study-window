@@ -60,6 +60,158 @@ function ScrollZoomSection({ children, className = "" }: { children: React.React
     );
 }
 
+// ============================================
+// REPELLING PARTICLE BACKGROUND
+// ============================================
+interface Particle {
+    x: number;
+    y: number;
+    baseX: number;
+    baseY: number;
+    baseSize: number;
+    size: number;
+    speedX: number;
+    speedY: number;
+    opacity: number;
+    baseOpacity: number;
+    colorIndex: number;
+}
+
+function RepellingParticleBackground() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const particlesRef = useRef<Particle[]>([]);
+    const mouseRef = useRef({ x: -1000, y: -1000 });
+    const animationRef = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        // Color palette for particles
+        const colors = [
+            "rgba(124, 185, 232,", // Light blue
+            "rgba(96, 165, 250,",  // Blue
+            "rgba(59, 130, 246,",  // Bright blue
+            "rgba(14, 165, 233,",  // Cyan blue
+        ];
+
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = Math.max(document.body.scrollHeight, window.innerHeight);
+            particlesRef.current = createParticles();
+        };
+
+        const createParticles = () => {
+            const particles: Particle[] = [];
+            // Even more particles for denser look
+            const count = Math.floor((canvas.width * canvas.height) / 4000);
+
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const baseSize = Math.random() * 2.5 + 1;
+                const baseOpacity = Math.random() * 0.15 + 0.08;
+                particles.push({
+                    x,
+                    y,
+                    baseX: x,
+                    baseY: y,
+                    baseSize,
+                    size: baseSize,
+                    speedX: (Math.random() - 0.5) * 0.4,
+                    speedY: (Math.random() - 0.5) * 0.4,
+                    opacity: baseOpacity,
+                    baseOpacity,
+                    colorIndex: Math.floor(Math.random() * colors.length),
+                });
+            }
+            return particles;
+        };
+
+        resize();
+        window.addEventListener("resize", resize);
+
+        const handleMouseMove = (e: MouseEvent) => {
+            mouseRef.current.x = e.clientX;
+            mouseRef.current.y = e.clientY + window.scrollY;
+        };
+        const handleMouseLeave = () => {
+            mouseRef.current.x = -1000;
+            mouseRef.current.y = -1000;
+        };
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseleave", handleMouseLeave);
+        window.addEventListener("scroll", () => {
+            mouseRef.current.y = mouseRef.current.y;
+        }, { passive: true });
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const mouse = mouseRef.current;
+            const repelRadius = 120;
+
+            particlesRef.current.forEach((particle) => {
+                const dx = mouse.x - particle.x;
+                const dy = (mouse.y - window.scrollY) - particle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < repelRadius && distance > 0) {
+                    const force = (repelRadius - distance) / repelRadius;
+                    const angle = Math.atan2(dy, dx);
+                    particle.x -= Math.cos(angle) * force * 4;
+                    particle.y -= Math.sin(angle) * force * 4;
+
+                    // Dynamic size increase when repelled
+                    particle.size = particle.baseSize * (1 + force * 1.5);
+                    // Dynamic opacity increase when repelled
+                    particle.opacity = Math.min(0.5, particle.baseOpacity * (1 + force * 3));
+                } else {
+                    particle.x += (particle.baseX - particle.x) * 0.03;
+                    particle.y += (particle.baseY - particle.y) * 0.03;
+                    // Return to base size/opacity smoothly
+                    particle.size += (particle.baseSize - particle.size) * 0.08;
+                    particle.opacity += (particle.baseOpacity - particle.opacity) * 0.08;
+                }
+
+                particle.baseX += particle.speedX;
+                particle.baseY += particle.speedY;
+
+                if (particle.baseX < -10) particle.baseX = canvas.width + 10;
+                if (particle.baseX > canvas.width + 10) particle.baseX = -10;
+                if (particle.baseY < -10) particle.baseY = canvas.height + 10;
+                if (particle.baseY > canvas.height + 10) particle.baseY = -10;
+
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = colors[particle.colorIndex] + particle.opacity + ")";
+                ctx.fill();
+            });
+
+            animationRef.current = requestAnimationFrame(animate);
+        };
+
+        animate();
+
+        return () => {
+            window.removeEventListener("resize", resize);
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseleave", handleMouseLeave);
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        };
+    }, []);
+
+    return (
+        <canvas
+            ref={canvasRef}
+            className="pointer-events-none fixed inset-0 z-0"
+            style={{ background: "transparent" }}
+        />
+    );
+}
+
 
 // ============================================
 // FEATURE SECTION COMPONENT
@@ -82,63 +234,65 @@ function FeatureSection({
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 overflow-hidden transition-all duration-300 hover:shadow-md">
-            {/* Header */}
-            <div className={`p-6 ${color}`}>
-                <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/90 shadow-sm">
-                        <Icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-                            {title}
-                        </h2>
-                        <p className="text-sm text-[#45474D]">{tagline}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="p-6 border-t border-slate-100">
-                <div className="grid sm:grid-cols-2 gap-3">
-                    {features.map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50/50">
-                            <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-white flex items-center justify-center text-[#4285F4] shadow-sm">
-                                <feature.icon className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <h4 className="font-medium text-[#121317] text-sm">{feature.title}</h4>
-                                <p className="text-xs text-[#6B7280] leading-relaxed mt-0.5">{feature.detail}</p>
-                            </div>
+        <ScrollZoomSection>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-blue-200">
+                {/* Header */}
+                <div className={`p-6 ${color}`}>
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/90 shadow-sm">
+                            <Icon className="h-6 w-6" />
                         </div>
-                    ))}
+                        <div>
+                            <h2 className="text-xl font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
+                                {title}
+                            </h2>
+                            <p className="text-sm text-[#45474D]">{tagline}</p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* How It Works */}
-                <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-2 text-[#4285F4] text-sm font-medium mt-5 hover:underline"
-                >
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    {isExpanded ? "Hide" : "How to use"}
-                </button>
-
-                {isExpanded && (
-                    <div className="mt-3 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-                        <ol className="space-y-2">
-                            {howItWorks.map((step, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-[#45474D]">
-                                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#4285F4] text-white text-xs flex items-center justify-center font-medium mt-0.5">
-                                        {idx + 1}
-                                    </span>
-                                    {step}
-                                </li>
-                            ))}
-                        </ol>
+                {/* Features Grid */}
+                <div className="p-6 border-t border-slate-100">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                        {features.map((feature, idx) => (
+                            <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50/50 hover:bg-blue-50/50 transition-colors">
+                                <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-white flex items-center justify-center text-[#4285F4] shadow-sm">
+                                    <feature.icon className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h4 className="font-medium text-[#121317] text-sm">{feature.title}</h4>
+                                    <p className="text-xs text-[#6B7280] leading-relaxed mt-0.5">{feature.detail}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                )}
+
+                    {/* How It Works */}
+                    <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="flex items-center gap-2 text-[#4285F4] text-sm font-medium mt-5 hover:underline"
+                    >
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {isExpanded ? "Hide" : "How to use"}
+                    </button>
+
+                    {isExpanded && (
+                        <div className="mt-3 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+                            <ol className="space-y-2">
+                                {howItWorks.map((step, idx) => (
+                                    <li key={idx} className="flex items-start gap-2 text-sm text-[#45474D]">
+                                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#4285F4] text-white text-xs flex items-center justify-center font-medium mt-0.5">
+                                            {idx + 1}
+                                        </span>
+                                        {step}
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </ScrollZoomSection>
     );
 }
 
@@ -191,6 +345,7 @@ export default function FeaturesPage() {
                 }}
             />
 
+            <RepellingParticleBackground />
             <Logo />
 
             <main className="relative z-10 min-h-screen pt-24 pb-16 px-6">

@@ -5,20 +5,20 @@ import Link from "next/link";
 import { ArrowLeft, BookOpen, Users, Target, Sparkles, GraduationCap, Heart, Code, Lightbulb } from "lucide-react";
 
 // ============================================
-// PARTICLE BACKGROUND (Shared)
+// REPELLING PARTICLE BACKGROUND
 // ============================================
 interface Particle {
-    id: number;
     x: number;
     y: number;
     baseX: number;
     baseY: number;
+    baseSize: number;
     size: number;
-    color: string;
     speedX: number;
     speedY: number;
     opacity: number;
-    pulsePhase: number;
+    baseOpacity: number;
+    colorIndex: number;
 }
 
 function ParticleBackground() {
@@ -34,36 +34,42 @@ function ParticleBackground() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
+        // Color palette for particles
         const colors = [
-            "#4285F4", "#60A5FA", "#3B82F6", "#0EA5E9", "#10B981", "#FBBF24", "#F97316", "#93C5FD", "#6EE7B7",
+            "rgba(124, 185, 232,", // Light blue
+            "rgba(96, 165, 250,",  // Blue
+            "rgba(59, 130, 246,",  // Bright blue
+            "rgba(14, 165, 233,",  // Cyan blue
         ];
 
         const resize = () => {
             canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.height = Math.max(document.body.scrollHeight, window.innerHeight);
             particlesRef.current = createParticles();
         };
 
         const createParticles = () => {
             const particles: Particle[] = [];
-            // Reduced particle count for better performance
-            const count = Math.floor((canvas.width * canvas.height) / 12000);
+            // Even more particles for denser look
+            const count = Math.floor((canvas.width * canvas.height) / 4000);
 
             for (let i = 0; i < count; i++) {
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
+                const baseSize = Math.random() * 2.5 + 1;
+                const baseOpacity = Math.random() * 0.15 + 0.08;
                 particles.push({
-                    id: i,
                     x,
                     y,
                     baseX: x,
                     baseY: y,
-                    size: Math.random() * 4 + 1,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: (Math.random() - 0.5) * 0.3,
-                    speedY: (Math.random() - 0.5) * 0.3,
-                    opacity: Math.random() * 0.5 + 0.3,
-                    pulsePhase: Math.random() * Math.PI * 2,
+                    baseSize,
+                    size: baseSize,
+                    speedX: (Math.random() - 0.5) * 0.4,
+                    speedY: (Math.random() - 0.5) * 0.4,
+                    opacity: baseOpacity,
+                    baseOpacity,
+                    colorIndex: Math.floor(Math.random() * colors.length),
                 });
             }
             return particles;
@@ -74,7 +80,7 @@ function ParticleBackground() {
 
         const handleMouseMove = (e: MouseEvent) => {
             mouseRef.current.x = e.clientX;
-            mouseRef.current.y = e.clientY;
+            mouseRef.current.y = e.clientY + window.scrollY;
         };
         const handleMouseLeave = () => {
             mouseRef.current.x = -1000;
@@ -83,27 +89,32 @@ function ParticleBackground() {
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("mouseleave", handleMouseLeave);
 
-        let time = 0;
-
         const animate = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const mouse = mouseRef.current;
-            time += 0.02;
+            const repelRadius = 120;
 
             particlesRef.current.forEach((particle) => {
                 const dx = mouse.x - particle.x;
-                const dy = mouse.y - particle.y;
+                const dy = (mouse.y - window.scrollY) - particle.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const maxDistance = 180;
 
-                if (distance < maxDistance && distance > 0) {
-                    const force = Math.pow((maxDistance - distance) / maxDistance, 2);
+                if (distance < repelRadius && distance > 0) {
+                    const force = (repelRadius - distance) / repelRadius;
                     const angle = Math.atan2(dy, dx);
-                    particle.x -= Math.cos(angle) * force * 6;
-                    particle.y -= Math.sin(angle) * force * 6;
+                    particle.x -= Math.cos(angle) * force * 4;
+                    particle.y -= Math.sin(angle) * force * 4;
+
+                    // Dynamic size increase when repelled
+                    particle.size = particle.baseSize * (1 + force * 1.5);
+                    // Dynamic opacity increase when repelled
+                    particle.opacity = Math.min(0.5, particle.baseOpacity * (1 + force * 3));
                 } else {
                     particle.x += (particle.baseX - particle.x) * 0.03;
                     particle.y += (particle.baseY - particle.y) * 0.03;
+                    // Return to base size/opacity smoothly
+                    particle.size += (particle.baseSize - particle.size) * 0.08;
+                    particle.opacity += (particle.baseOpacity - particle.opacity) * 0.08;
                 }
 
                 particle.baseX += particle.speedX;
@@ -114,22 +125,12 @@ function ParticleBackground() {
                 if (particle.baseY < -10) particle.baseY = canvas.height + 10;
                 if (particle.baseY > canvas.height + 10) particle.baseY = -10;
 
-                const pulse = Math.sin(time + particle.pulsePhase) * 0.15 + 1;
-                let glowMultiplier = 1;
-                if (distance < maxDistance) {
-                    glowMultiplier = 1 + (maxDistance - distance) / maxDistance * 0.8;
-                }
-
-                const size = particle.size * pulse * glowMultiplier;
-
                 ctx.beginPath();
-                ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
-                ctx.fillStyle = particle.color;
-                ctx.globalAlpha = particle.opacity * glowMultiplier;
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = colors[particle.colorIndex] + particle.opacity + ")";
                 ctx.fill();
             });
 
-            ctx.globalAlpha = 1;
             animationRef.current = requestAnimationFrame(animate);
         };
 
@@ -385,14 +386,27 @@ export default function AboutPage() {
                             />
                         </div>
 
-                        {/* Explore Features CTA */}
-                        <div className="text-center mt-8">
+                        {/* Explore Features CTA - Modern Design */}
+                        <div className="text-center mt-10">
                             <Link
                                 href="/about/features"
-                                className="inline-flex items-center gap-2 rounded-full border border-[#4285F4] text-[#4285F4] px-6 py-3 font-medium hover:bg-[#4285F4] hover:text-white transition-all"
+                                className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#4285F4] to-[#0EA5E9] px-8 py-4 text-white font-medium shadow-lg shadow-blue-200/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-300/60 hover:scale-[1.02]"
                             >
-                                <Sparkles className="h-4 w-4" />
-                                Explore All Features
+                                {/* Animated background shimmer */}
+                                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+
+                                <Sparkles className="h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
+                                <span className="relative">Explore All Features</span>
+
+                                {/* Animated arrow */}
+                                <svg
+                                    className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                </svg>
                             </Link>
                         </div>
                     </ScrollZoomSection>

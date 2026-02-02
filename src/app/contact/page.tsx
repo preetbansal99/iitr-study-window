@@ -1,27 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Mail, MapPin, Clock, Send, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Mail, MapPin, Clock, ArrowLeft } from "lucide-react";
 
 // ============================================
-// PARTICLE BACKGROUND (Shared)
+// REPELLING PARTICLE BACKGROUND
 // ============================================
 interface Particle {
-    id: number;
     x: number;
     y: number;
     baseX: number;
     baseY: number;
+    baseSize: number;
     size: number;
-    color: string;
     speedX: number;
     speedY: number;
     opacity: number;
-    pulsePhase: number;
+    baseOpacity: number;
+    colorIndex: number;
 }
 
-function ParticleBackground() {
+function RepellingParticleBackground() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<Particle[]>([]);
     const mouseRef = useRef({ x: -1000, y: -1000 });
@@ -34,8 +34,12 @@ function ParticleBackground() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
+        // Color palette for particles
         const colors = [
-            "#4285F4", "#60A5FA", "#3B82F6", "#0EA5E9", "#10B981", "#FBBF24", "#F97316", "#93C5FD", "#6EE7B7",
+            "rgba(124, 185, 232,", // Light blue
+            "rgba(96, 165, 250,",  // Blue
+            "rgba(59, 130, 246,",  // Bright blue
+            "rgba(14, 165, 233,",  // Cyan blue
         ];
 
         const resize = () => {
@@ -46,24 +50,26 @@ function ParticleBackground() {
 
         const createParticles = () => {
             const particles: Particle[] = [];
-            // Reduced particle count for better performance
-            const count = Math.floor((canvas.width * canvas.height) / 12000);
+            // Even more particles for denser look
+            const count = Math.floor((canvas.width * canvas.height) / 4000);
 
             for (let i = 0; i < count; i++) {
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
+                const baseSize = Math.random() * 2.5 + 1;
+                const baseOpacity = Math.random() * 0.15 + 0.08;
                 particles.push({
-                    id: i,
                     x,
                     y,
                     baseX: x,
                     baseY: y,
-                    size: Math.random() * 4 + 1,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedX: (Math.random() - 0.5) * 0.3,
-                    speedY: (Math.random() - 0.5) * 0.3,
-                    opacity: Math.random() * 0.5 + 0.3,
-                    pulsePhase: Math.random() * Math.PI * 2,
+                    baseSize,
+                    size: baseSize,
+                    speedX: (Math.random() - 0.5) * 0.4,
+                    speedY: (Math.random() - 0.5) * 0.4,
+                    opacity: baseOpacity,
+                    baseOpacity,
+                    colorIndex: Math.floor(Math.random() * colors.length),
                 });
             }
             return particles;
@@ -83,27 +89,32 @@ function ParticleBackground() {
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("mouseleave", handleMouseLeave);
 
-        let time = 0;
-
         const animate = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const mouse = mouseRef.current;
-            time += 0.02;
+            const repelRadius = 120;
 
             particlesRef.current.forEach((particle) => {
                 const dx = mouse.x - particle.x;
                 const dy = mouse.y - particle.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const maxDistance = 180;
 
-                if (distance < maxDistance && distance > 0) {
-                    const force = Math.pow((maxDistance - distance) / maxDistance, 2);
+                if (distance < repelRadius && distance > 0) {
+                    const force = (repelRadius - distance) / repelRadius;
                     const angle = Math.atan2(dy, dx);
-                    particle.x -= Math.cos(angle) * force * 6;
-                    particle.y -= Math.sin(angle) * force * 6;
+                    particle.x -= Math.cos(angle) * force * 4;
+                    particle.y -= Math.sin(angle) * force * 4;
+
+                    // Dynamic size increase when repelled
+                    particle.size = particle.baseSize * (1 + force * 1.5);
+                    // Dynamic opacity increase when repelled
+                    particle.opacity = Math.min(0.5, particle.baseOpacity * (1 + force * 3));
                 } else {
                     particle.x += (particle.baseX - particle.x) * 0.03;
                     particle.y += (particle.baseY - particle.y) * 0.03;
+                    // Return to base size/opacity smoothly
+                    particle.size += (particle.baseSize - particle.size) * 0.08;
+                    particle.opacity += (particle.baseOpacity - particle.opacity) * 0.08;
                 }
 
                 particle.baseX += particle.speedX;
@@ -114,22 +125,12 @@ function ParticleBackground() {
                 if (particle.baseY < -10) particle.baseY = canvas.height + 10;
                 if (particle.baseY > canvas.height + 10) particle.baseY = -10;
 
-                const pulse = Math.sin(time + particle.pulsePhase) * 0.15 + 1;
-                let glowMultiplier = 1;
-                if (distance < maxDistance) {
-                    glowMultiplier = 1 + (maxDistance - distance) / maxDistance * 0.8;
-                }
-
-                const size = particle.size * pulse * glowMultiplier;
-
                 ctx.beginPath();
-                ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
-                ctx.fillStyle = particle.color;
-                ctx.globalAlpha = particle.opacity * glowMultiplier;
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = colors[particle.colorIndex] + particle.opacity + ")";
                 ctx.fill();
             });
 
-            ctx.globalAlpha = 1;
             animationRef.current = requestAnimationFrame(animate);
         };
 
@@ -160,11 +161,9 @@ function Logo() {
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-white/50 backdrop-blur-sm border-b border-slate-100">
             <Link href="/login" className="flex items-center gap-2">
                 <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Left window panel with S */}
                     <rect x="4" y="8" width="18" height="32" rx="2" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
                     <text x="13" y="20" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">S</text>
                     <text x="13" y="32" fill="#7CB9E8" fontSize="9" fontWeight="600" textAnchor="middle" fontFamily="system-ui">W</text>
-                    {/* Right window panel (open door effect) */}
                     <path d="M26 8 L42 12 L42 36 L26 40 Z" stroke="#7CB9E8" strokeWidth="2.5" fill="none" />
                     <line x1="34" y1="15" x2="38" y2="16" stroke="#7CB9E8" strokeWidth="2" />
                     <line x1="34" y1="32" x2="38" y2="33" stroke="#7CB9E8" strokeWidth="2" />
@@ -188,90 +187,24 @@ function Logo() {
 }
 
 // ============================================
-// SCROLL ZOOM SECTION COMPONENT
-// ============================================
-function ScrollZoomSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-    const sectionRef = useRef<HTMLDivElement>(null);
-    const [scale, setScale] = useState(0.85);
-    const [opacity, setOpacity] = useState(0.6);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            if (!sectionRef.current) return;
-
-            const rect = sectionRef.current.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const elementCenter = rect.top + rect.height / 2;
-            const viewportCenter = windowHeight / 2;
-            const distanceFromCenter = Math.abs(elementCenter - viewportCenter);
-            const maxDistance = windowHeight / 2 + rect.height / 2;
-
-            const progress = Math.max(0, 1 - distanceFromCenter / maxDistance);
-            const newScale = 0.85 + progress * 0.15;
-            const newOpacity = 0.6 + progress * 0.4;
-
-            setScale(newScale);
-            setOpacity(newOpacity);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
-
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    return (
-        <div
-            ref={sectionRef}
-            className={className}
-            style={{
-                transform: `scale(${scale})`,
-                opacity: opacity,
-                transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
-                willChange: 'transform, opacity',
-            }}
-        >
-            {children}
-        </div>
-    );
-}
-
-// ============================================
-// CONTACT PAGE
+// CONTACT PAGE - SIMPLIFIED
 // ============================================
 export default function ContactPage() {
-    const [formState, setFormState] = useState({
-        name: "",
-        email: "",
-        subject: "",
-        message: "",
-    });
-    const [submitted, setSubmitted] = useState(false);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // In a real app, you'd send this to an API
-        setSubmitted(true);
-    };
-
     return (
         <>
             {/* Background */}
             <div
                 className="fixed inset-0 z-0"
                 style={{
-                    background: `
-            radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 50%, rgba(225,230,236,0.8) 100%),
-            linear-gradient(to bottom, rgba(66, 133, 244, 0.05) 0%, transparent 30%, transparent 70%, rgba(14, 165, 233, 0.05) 100%)
-          `,
+                    background: `radial-gradient(ellipse at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 50%, rgba(225,230,236,0.8) 100%)`,
                 }}
             />
 
-            <ParticleBackground />
+            <RepellingParticleBackground />
             <Logo />
 
-            <main className="relative z-10 min-h-screen pt-24 pb-16 px-6">
-                <div className="max-w-4xl mx-auto">
+            <main className="relative z-10 min-h-screen flex items-center justify-center pt-20 pb-16 px-6">
+                <div className="max-w-md w-full">
                     {/* Back Link */}
                     <Link
                         href="/login"
@@ -282,149 +215,68 @@ export default function ContactPage() {
                     </Link>
 
                     {/* Header */}
-                    <ScrollZoomSection className="text-center mb-12">
+                    <div className="text-center mb-10">
                         <h1
-                            className="text-4xl md:text-5xl font-light text-[#121317] mb-4"
+                            className="text-3xl md:text-4xl font-light text-[#121317] mb-3"
                             style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}
                         >
-                            Get in Touch
+                            Contact Us
                         </h1>
-                        <p className="text-lg text-[#45474D] max-w-2xl mx-auto">
-                            Have questions, feedback, or want to collaborate? We&apos;d love to hear from you.
+                        <p className="text-[#6B7280]">
+                            We&apos;d love to hear from you
                         </p>
-                    </ScrollZoomSection>
+                    </div>
 
-                    <ScrollZoomSection className="grid md:grid-cols-2 gap-12">
-                        {/* Contact Info */}
-                        <div className="space-y-8">
-                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 space-y-6">
-                                <h2 className="text-xl font-medium text-[#121317]" style={{ fontFamily: "'Google Sans', 'Outfit', sans-serif" }}>
-                                    Contact Information
-                                </h2>
-
-                                <div className="space-y-5">
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#4285F4]">
-                                            <Mail className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-[#6B7280]">Email us at</p>
-                                            <a
-                                                href="mailto:iitrstudywindow@gmail.com"
-                                                className="text-[#121317] font-medium hover:text-[#4285F4] transition-colors"
-                                            >
-                                                iitrstudywindow@gmail.com
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-emerald-500">
-                                            <MapPin className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-[#6B7280]">Location</p>
-                                            <p className="text-[#121317]">IIT Roorkee, Uttarakhand</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
-                                            <Clock className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-[#6B7280]">Response time</p>
-                                            <p className="text-[#121317]">Within 24-48 hours</p>
-                                        </div>
-                                    </div>
-                                </div>
+                    {/* Contact Card */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 space-y-6">
+                        {/* Email */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#4285F4]">
+                                <Mail className="h-6 w-6" />
                             </div>
-
-                            {/* Quick note */}
-                            <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-6 border border-blue-100">
-                                <p className="text-sm text-[#45474D] leading-relaxed">
-                                    💡 <strong>Tip:</strong> For faster responses, include your enrollment number in your email when asking about course-specific resources.
-                                </p>
+                            <div>
+                                <p className="text-sm text-[#6B7280]">Email</p>
+                                <a
+                                    href="mailto:iitrstudywindow@gmail.com"
+                                    className="text-[#121317] font-medium hover:text-[#4285F4] transition-colors"
+                                >
+                                    iitrstudywindow@gmail.com
+                                </a>
                             </div>
                         </div>
 
-                        {/* Contact Form */}
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8">
-                            {submitted ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-                                        <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-                                    </div>
-                                    <h3 className="text-xl font-medium text-[#121317] mb-2">Message Sent!</h3>
-                                    <p className="text-[#6B7280]">We&apos;ll get back to you within 24-48 hours.</p>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleSubmit} className="space-y-5">
-                                    <div>
-                                        <label className="block text-sm font-medium text-[#121317] mb-1.5">Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formState.name}
-                                            onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-[#4285F4] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            placeholder="Your name"
-                                        />
-                                    </div>
+                        <hr className="border-slate-100" />
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-[#121317] mb-1.5">Email</label>
-                                        <input
-                                            type="email"
-                                            required
-                                            value={formState.email}
-                                            onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-[#4285F4] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            placeholder="your.email@iitr.ac.in"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-[#121317] mb-1.5">Subject</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formState.subject}
-                                            onChange={(e) => setFormState({ ...formState, subject: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-[#4285F4] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            placeholder="What's this about?"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-[#121317] mb-1.5">Message</label>
-                                        <textarea
-                                            required
-                                            rows={4}
-                                            value={formState.message}
-                                            onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-[#4285F4] focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none"
-                                            placeholder="Tell us more..."
-                                        />
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        className="w-full btn-antigravity flex items-center justify-center gap-2 rounded-xl bg-[#121317] px-6 py-4 text-white font-medium hover:bg-[#2d2e33] hover:shadow-lg transition-all"
-                                    >
-                                        <Send className="h-4 w-4" />
-                                        Send Message
-                                    </button>
-                                </form>
-                            )}
+                        {/* Location */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
+                                <MapPin className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-[#6B7280]">Location</p>
+                                <p className="text-[#121317] font-medium">IIT Roorkee, Uttarakhand</p>
+                            </div>
                         </div>
-                    </ScrollZoomSection>
+
+                        <hr className="border-slate-100" />
+
+                        {/* Response Time */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
+                                <Clock className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-[#6B7280]">Response Time</p>
+                                <p className="text-[#121317] font-medium">Within 24-48 hours</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </main >
+            </main>
 
             <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
-      `}</style>
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+            `}</style>
         </>
     );
 }
